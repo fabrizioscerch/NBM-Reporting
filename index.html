@@ -95,11 +95,11 @@ table.data-table td input,table.data-table td select{padding:6px 8px;font-size:1
         <label>Project</label>
         <select id="sel-project" onchange="applyProject()">
           <option value="">Select project...</option>
-          <option value="t60">Baglietto T60 — Hull 10274</option>
-          <option value="rossi">Rossi Navi</option>
-          <option value="sunreef100">Sunreef 100</option>
-          <option value="benetti">Benetti 44m — M/Y Lumina</option>
-          <option value="sunreef80">Sunreef 80</option>
+          <option value="t60">Baglietto T60 #C10274</option>
+          <option value="rossi">Rossinavi 47m #FR058 — M/Y Seazens</option>
+          <option value="benetti">Benetti Class 44m #BP011 — M/Y Lumina</option>
+          <option value="sunreef100">Sunreef 100P07 — M/Y Ellen2s Dream</option>
+          <option value="sunreef80">Sunreef 80A52 — S/Y MoCapitan 2</option>
         </select>
       </div>
       <div>
@@ -145,7 +145,11 @@ table.data-table td input,table.data-table td select{padding:6px 8px;font-size:1
       <span class="chevron" id="ch-s1">&#8964;</span>
     </div>
     <div class="card-body" id="b-s1">
-      <div class="fl"><label>Summary</label><textarea id="exec-summary" rows="7" placeholder="During the month of [Month], the shipyard made great progress with...&#10;&#10;NauticALL has been actively engaged on behalf of the owner, monitoring construction quality, schedule adherence and contractual milestones...&#10;&#10;The last attendance was on [date] and the next visit is planned on [date]."></textarea></div>
+      <div class="fl"><label>Summary</label><textarea id="exec-summary" rows="7">During the month of [Month], the shipyard made great progress with [describe main activity].
+
+NauticALL has been actively engaged on behalf of the owner, monitoring construction quality, schedule adherence and contractual milestones to ensure the owner's interests are fully protected at every stage.
+
+The last attendance was on [date] and the next visit is planned on [date].</textarea></div>
       <div class="g2">
         <div class="fl"><label>Last Site Visit</label><input type="date" id="last-visit"></div>
         <div class="fl"><label>Next Site Visit Planned</label><input type="date" id="next-visit"></div>
@@ -322,11 +326,11 @@ const LOGO_COLOR = '/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAA
 
 const NAVY = '#1c3548';
 const projects = {
-  t60:       {pm:'Simone Ragazzi', tech:'Simone Ragazzi', nbmName:'Simone Ragazzi', nbmEmail:'sr@nauticall.com', nbmPhone:'+39 ...', vessel:'Hull 10274', builder:'Baglietto T60 60m'},
-  rossi:     {pm:'Michela Bellini', tech:'Simon Cox', nbmName:'Michela Bellini', nbmEmail:'MB@nauticall.com', nbmPhone:'+44 (776) 716-8022', vessel:'', builder:'Rossi Navi'},
-  sunreef100:{pm:'Michela Bellini', tech:'Simon Cox', nbmName:'Michela Bellini', nbmEmail:'MB@nauticall.com', nbmPhone:'+44 (776) 716-8022', vessel:'', builder:'Sunreef 100'},
-  benetti:   {pm:'Michela Bellini', tech:'Simon Cox', nbmName:'Michela Bellini', nbmEmail:'MB@nauticall.com', nbmPhone:'+44 (776) 716-8022', vessel:'M/Y Lumina', builder:'Benetti Class 44m'},
-  sunreef80: {pm:'Michela Bellini', tech:'Simone Ragazzi', nbmName:'Michela Bellini', nbmEmail:'MB@nauticall.com', nbmPhone:'+44 (776) 716-8022', vessel:'', builder:'Sunreef 80'}
+  t60:       {pm:'Simone Ragazzi', tech:'Simone Ragazzi', nbmName:'Simone Ragazzi', nbmEmail:'sr@nauticall.com', nbmPhone:'+39 ...', vessel:'#C10274', builder:'Baglietto T60'},
+  rossi:     {pm:'Michela Bellini', tech:'Simon Cox', nbmName:'Michela Bellini', nbmEmail:'MB@nauticall.com', nbmPhone:'+44 (776) 716-8022', vessel:'M/Y Seazens', builder:'Rossinavi 47m #FR058'},
+  benetti:   {pm:'Michela Bellini', tech:'Simon Cox', nbmName:'Michela Bellini', nbmEmail:'MB@nauticall.com', nbmPhone:'+44 (776) 716-8022', vessel:'M/Y Lumina', builder:'Benetti Class 44m #BP011'},
+  sunreef100:{pm:'Michela Bellini', tech:'Simon Cox', nbmName:'Michela Bellini', nbmEmail:'MB@nauticall.com', nbmPhone:'+44 (776) 716-8022', vessel:"M/Y Ellen2s Dream", builder:'Sunreef 100P07'},
+  sunreef80: {pm:'Michela Bellini', tech:'Simone Ragazzi', nbmName:'Michela Bellini', nbmEmail:'MB@nauticall.com', nbmPhone:'+44 (776) 716-8022', vessel:'S/Y MoCapitan 2', builder:'Sunreef 80A52'}
 };
 
 document.getElementById('topbar-logo').src = 'data:image/png;base64,' + LOGO_WHITE;
