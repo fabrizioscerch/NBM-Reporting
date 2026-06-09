@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NauticALL — New Build Report Generator</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;background:#f4f5f7;color:#1a1a2e;font-size:15px}
@@ -90,7 +92,7 @@ table.data-table td input,table.data-table td select{padding:6px 8px;font-size:1
 
   <div class="setup-card">
     <h2>Project Setup</h2>
-    <div class="setup-grid">
+    <div class="setup-grid" style="grid-template-columns:1fr 1fr 1fr;">
       <div>
         <label>Project</label>
         <select id="sel-project" onchange="applyProject()">
@@ -105,6 +107,13 @@ table.data-table td input,table.data-table td select{padding:6px 8px;font-size:1
       <div>
         <label>Report Month</label>
         <input type="month" id="sel-month" value="2026-06">
+      </div>
+      <div>
+        <label>Currency</label>
+        <select id="sel-currency" onchange="updateCurrencySymbol()">
+          <option value="€">€ Euro</option>
+          <option value="$">$ US Dollar</option>
+        </select>
       </div>
     </div>
     <div class="info-strip" id="info-strip" style="display:none">
@@ -220,7 +229,7 @@ NauticALL and Class will need to reattend on [date] for the witnessing of [miles
       <div class="applicable-row"><input type="checkbox" id="paint-cb" onchange="toggleAppl('paint-fields',this)"><label for="paint-cb">This section applies this month</label></div>
       <div class="fields-wrap disabled" id="paint-fields">
         <div class="g2">
-          <div class="fl"><label>Inspection Date</label><input type="date" id="paint-date"></div>
+          <div class="fl"><label>Inspection Date(s) <span class="opt">(e.g. 2026-06-03, 2026-06-04)</span></label><input type="text" id="paint-date" placeholder="e.g. June 3, June 4 2026"></div>
           <div class="fl"><label>Overall Status</label>
             <select id="paint-status">
               <option>Acceptable — no open items</option>
@@ -231,6 +240,15 @@ NauticALL and Class will need to reattend on [date] for the witnessing of [miles
         </div>
         <div class="fl"><label>Areas Inspected</label><input type="text" id="paint-areas" placeholder="e.g. Hull plating, Superstructure, Deck — steel detailing and conditioning"></div>
         <div class="fl"><label>Findings &amp; Open Items</label><textarea id="paint-findings" rows="5" placeholder="[STANDARD TEXT — TO BE CUSTOMIZED] Summarize the paint surveyor's key findings and any open items for this month..."></textarea></div>
+        <div class="fl" style="margin-top:8px">
+          <label>Surveyor Report Annex <span class="opt">(upload .docx or .pdf — text will be extracted and reformatted)</span></label>
+          <div class="gantt-zone" id="paint-annex-zone" style="padding:16px;">
+            <input type="file" accept=".docx,.pdf" onchange="loadAnnex(event,'paint')">
+            <svg width="22" height="22" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p id="paint-annex-name">Upload Paint Surveyor Report (.docx or .pdf)</p>
+          </div>
+          <textarea id="paint-annex-text" rows="6" placeholder="Extracted text will appear here for review before it goes into the PDF..." style="margin-top:8px;display:none;"></textarea>
+        </div>
       </div>
     </div>
   </div>
@@ -245,7 +263,7 @@ NauticALL and Class will need to reattend on [date] for the witnessing of [miles
       <div class="applicable-row"><input type="checkbox" id="int-cb" onchange="toggleAppl('int-fields',this)"><label for="int-cb">This section applies this month</label></div>
       <div class="fields-wrap disabled" id="int-fields">
         <div class="g2">
-          <div class="fl"><label>Inspection Date</label><input type="date" id="int-date"></div>
+          <div class="fl"><label>Inspection Date(s) <span class="opt">(e.g. 2026-06-03, 2026-06-04)</span></label><input type="text" id="int-date" placeholder="e.g. June 3, June 4 2026"></div>
           <div class="fl"><label>Overall Status</label>
             <select id="int-status">
               <option>Acceptable — no open items</option>
@@ -256,6 +274,15 @@ NauticALL and Class will need to reattend on [date] for the witnessing of [miles
         </div>
         <div class="fl"><label>Areas Inspected</label><input type="text" id="int-areas" placeholder="e.g. Joinery, Upholstery, Master cabin, Guest cabins, Saloon fit-out"></div>
         <div class="fl"><label>Findings &amp; Open Items</label><textarea id="int-findings" rows="5" placeholder="[STANDARD TEXT — TO BE CUSTOMIZED] Summarize the interiors surveyor's key findings and any open items for this month..."></textarea></div>
+        <div class="fl" style="margin-top:8px">
+          <label>Surveyor Report Annex <span class="opt">(upload .docx or .pdf — text will be extracted and reformatted)</span></label>
+          <div class="gantt-zone" id="int-annex-zone" style="padding:16px;">
+            <input type="file" accept=".docx,.pdf" onchange="loadAnnex(event,'int')">
+            <svg width="22" height="22" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p id="int-annex-name">Upload Interiors Surveyor Report (.docx or .pdf)</p>
+          </div>
+          <textarea id="int-annex-text" rows="6" placeholder="Extracted text will appear here for review before it goes into the PDF..." style="margin-top:8px;display:none;"></textarea>
+        </div>
       </div>
     </div>
   </div>
@@ -315,7 +342,15 @@ NauticALL and Class will need to reattend on [date] for the witnessing of [miles
       <span class="chevron" id="ch-s8">&#8964;</span>
     </div>
     <div class="card-body" id="b-s8">
-      <div class="fl"><label>Paste Pinpoint Report Content</label><textarea id="construction-log" rows="14" placeholder="Paste the Pinpoint daily log content here. It will be formatted automatically in the final PDF."></textarea></div>
+      <div class="fl">
+        <label>Pinpoint Report <span class="opt">(upload .pdf or .docx — text will be extracted and reformatted in NauticALL style)</span></label>
+        <div class="gantt-zone" id="log-annex-zone" style="padding:16px;">
+          <input type="file" accept=".docx,.pdf" onchange="loadAnnex(event,'log')">
+          <svg width="22" height="22" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <p id="log-annex-name">Upload Pinpoint Report (.pdf or .docx)</p>
+        </div>
+        <textarea id="construction-log" rows="10" placeholder="Extracted text appears here — review and edit before generating PDF..." style="margin-top:8px;"></textarea>
+      </div>
     </div>
   </div>
 
@@ -382,17 +417,24 @@ function addCO(){
   calcTotals();
 }
 
+function getCurrency(){ return document.getElementById('sel-currency')?.value||'€'; }
+function fmtNum(n){ return getCurrency()+Math.round(n).toLocaleString('en-US'); }
+function updateCurrencySymbol(){
+  // Update labels on milestone amount placeholder
+  document.getElementById('milestone-amt').placeholder='e.g. 1,200,000';
+  calcTotals();
+}
 function calcTotals(){
   let app=0,out=0;
   document.querySelectorAll('#co-body tr').forEach(tr=>{
-    const amt = parseFloat((tr.querySelectorAll('td')[2].querySelector('input').value||'0').replace(/,/g,''))||0;
-    const st = tr.querySelector('select').value;
+    const raw=(tr.querySelectorAll('td')[2].querySelector('input').value||'0').replace(/,/g,'').replace(/[€$]/g,'');
+    const amt=parseFloat(raw)||0;
+    const st=tr.querySelector('select').value;
     if(st==='approved') app+=amt; else if(st==='outstanding') out+=amt;
   });
-  const fmt=n=>'€'+Math.round(n).toLocaleString();
-  document.getElementById('tot-approved').textContent=fmt(app);
-  document.getElementById('tot-outstanding').textContent=fmt(out);
-  document.getElementById('tot-grand').textContent=fmt(app+out);
+  document.getElementById('tot-approved').textContent=fmtNum(app);
+  document.getElementById('tot-outstanding').textContent=fmtNum(out);
+  document.getElementById('tot-grand').textContent=fmtNum(app+out);
 }
 
 let bdmCount=0;
@@ -415,16 +457,16 @@ function rebuildMedia(){
   const rows=parseInt(document.getElementById('media-rows').value);
   const total=cols*rows;
   const grid=document.getElementById('media-grid');
-  const captions=document.getElementById('media-captions');
   grid.style.gridTemplateColumns=`repeat(${cols},1fr)`;
   grid.style.display='grid';
-  grid.style.gap='10px';
+  grid.style.gap='12px';
   grid.innerHTML='';
-  captions.style.display='grid';
-  captions.style.gridTemplateColumns=`repeat(${cols},1fr)`;
-  captions.style.gap='8px';
-  captions.innerHTML='';
+  document.getElementById('media-captions').innerHTML='';
   for(let i=0;i<total;i++){
+    const cell=document.createElement('div');
+    cell.style.display='flex';
+    cell.style.flexDirection='column';
+    cell.style.gap='6px';
     const slot=document.createElement('div');
     slot.className='media-slot';
     slot.dataset.idx=i;
@@ -443,13 +485,61 @@ function rebuildMedia(){
       rebuildMedia();
     });
     slot.appendChild(inp);
-    grid.appendChild(slot);
     const cap=document.createElement('input');
     cap.type='text'; cap.placeholder='Caption (optional)';
     cap.id='cap-'+i;
-    cap.value=(mediaFiles[i] && mediaFiles[i].caption)||'';
+    cap.style.fontSize='12px';
+    cap.style.padding='5px 8px';
+    cap.style.border='1px solid #e0e2e6';
+    cap.style.borderRadius='6px';
+    cap.style.width='100%';
+    cap.value=(mediaFiles[i]&&mediaFiles[i].caption)||'';
     cap.addEventListener('change',e=>{if(mediaFiles[i]) mediaFiles[i].caption=e.target.value;});
-    captions.appendChild(cap);
+    cell.appendChild(slot);
+    cell.appendChild(cap);
+    grid.appendChild(cell);
+  }
+}
+
+async function loadAnnex(e, prefix){
+  const file = e.target.files[0]; if(!file) return;
+  const nameEl = document.getElementById(prefix+'-annex-name')||document.getElementById('log-annex-name');
+  const textEl = document.getElementById(prefix==='log'?'construction-log':prefix+'-annex-text');
+  const zoneEl = document.getElementById(prefix+'-annex-zone')||document.getElementById('log-annex-zone');
+  if(nameEl) nameEl.textContent = '✓ '+file.name;
+  if(zoneEl) zoneEl.style.borderColor = '#1c3548';
+  let extractedText = '';
+  try {
+    if(file.name.endsWith('.docx')){
+      const buf = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({arrayBuffer: buf});
+      extractedText = result.value;
+    } else if(file.name.endsWith('.pdf')){
+      const buf = await file.arrayBuffer();
+      const pdfjsLib = window['pdfjs-dist/build/pdf'];
+      if(pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const pdfDoc = await pdfjsLib.getDocument({data: buf}).promise;
+        let text = '';
+        for(let i=1; i<=pdfDoc.numPages; i++){
+          const page = await pdfDoc.getPage(i);
+          const content = await page.getTextContent();
+          text += content.items.map(s=>s.str).join(' ') + '\n';
+        }
+        extractedText = text;
+      } else {
+        extractedText = '[PDF extraction library not loaded — please paste content manually]';
+      }
+    }
+    if(extractedText && textEl){
+      textEl.value = extractedText;
+      textEl.style.display = 'block';
+    } else if(textEl) {
+      textEl.value = '[No text could be extracted — file may be image-based. Please paste content manually.]';
+      textEl.style.display = 'block';
+    }
+  } catch(err){
+    if(textEl){ textEl.value = '[Extraction failed: '+err.message+' — please paste content manually]'; textEl.style.display='block'; }
   }
 }
 
@@ -627,7 +717,7 @@ async function generatePDF(){
       ['Last milestone reached', v('last-milestone')||'—'],
       ['Next milestone', v('next-milestone')||'—'],
       ['Expected date', v('next-milestone-date')||'—'],
-      ['Milestone amount', v('milestone-amt')?'€'+v('milestone-amt'):'—'],
+      ['Milestone amount', v('milestone-amt')?(document.getElementById('sel-currency')?.value||'€')+v('milestone-amt'):'—'],
     ];
     msData.forEach(row=>{
       setNavy(); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text(row[0]+':',ML,sy);
@@ -660,7 +750,7 @@ async function generatePDF(){
       if(ri%2===0){doc.setFillColor(248,249,251);doc.rect(ML,cy-4,TW,8,'F');}
       setBlack(); doc.setFont('helvetica','normal'); doc.setFontSize(9);
       let cx2=ML+2;
-      [num,desc,'€'+amt,st.charAt(0).toUpperCase()+st.slice(1)].forEach((t,i)=>{
+      [num,desc,(document.getElementById('sel-currency')?.value||'€')+amt,st.charAt(0).toUpperCase()+st.slice(1)].forEach((t,i)=>{
         if(i===3){
           if(st==='approved') doc.setTextColor(30,120,60);
           else if(st==='outstanding') doc.setTextColor(180,100,0);
@@ -673,6 +763,7 @@ async function generatePDF(){
     });
     cy+=8;
     setNavy(); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    const cur=document.getElementById('sel-currency')?.value||'€';
     doc.text('Approved total: '+document.getElementById('tot-approved').textContent, ML, cy); cy+=8;
     doc.text('Outstanding total: '+document.getElementById('tot-outstanding').textContent, ML, cy); cy+=8;
     doc.text('Grand total: '+document.getElementById('tot-grand').textContent, ML, cy); cy+=10;
@@ -700,10 +791,21 @@ async function generatePDF(){
       setBlack(); doc.setFont('helvetica','normal'); doc.setFontSize(10);
       py=wrapText(row[1],ML+40,py,TW-40,6)+4;
     });
-    if(v('paint-findings')){
+    const paintAnnex=document.getElementById('paint-annex-text')?.value||'';
+    const paintMain=v('paint-findings');
+    if(paintMain){
       py+=4; setNavy(); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('Findings & open items:',ML,py); py+=8;
       setBlack(); doc.setFont('helvetica','normal'); doc.setFontSize(10);
-      py=wrapText(v('paint-findings'),ML,py,TW,6);
+      py=wrapText(paintMain,ML,py,TW,6);
+    }
+    if(paintAnnex){
+      py+=8; setNavy(); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('Surveyor Report — Annex:',ML,py); py+=8;
+      setBlack(); doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+      const annexLines=doc.splitTextToSize(paintAnnex,TW);
+      for(const line of annexLines){
+        if(py>H-24){ footer('Paint Inspection',pgNum++); newPage(); sectionHeader('4. Paint Inspection (continued)'); py=20; }
+        doc.text(line,ML,py); py+=5.5;
+      }
     }
     footer('Paint Inspection',pgNum++);
   }
@@ -725,10 +827,21 @@ async function generatePDF(){
       setBlack(); doc.setFont('helvetica','normal'); doc.setFontSize(10);
       iy=wrapText(row[1],ML+40,iy,TW-40,6)+4;
     });
-    if(v('int-findings')){
+    const intAnnex=document.getElementById('int-annex-text')?.value||'';
+    const intMain=v('int-findings');
+    if(intMain){
       iy+=4; setNavy(); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('Findings & open items:',ML,iy); iy+=8;
       setBlack(); doc.setFont('helvetica','normal'); doc.setFontSize(10);
-      iy=wrapText(v('int-findings'),ML,iy,TW,6);
+      iy=wrapText(intMain,ML,iy,TW,6);
+    }
+    if(intAnnex){
+      iy+=8; setNavy(); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('Surveyor Report — Annex:',ML,iy); iy+=8;
+      setBlack(); doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+      const iAnnexLines=doc.splitTextToSize(intAnnex,TW);
+      for(const line of iAnnexLines){
+        if(iy>H-24){ footer('Interiors Inspection',pgNum++); newPage(); sectionHeader('5. Interiors Inspection (continued)'); iy=20; }
+        doc.text(line,ML,iy); iy+=5.5;
+      }
     }
     footer('Interiors Inspection',pgNum++);
   }
