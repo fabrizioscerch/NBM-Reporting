@@ -5,11 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NauticALL — New Build Report Generator</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;background:#f4f5f7;color:#1a1a2e;font-size:15px}
+body{font-family:'Montserrat','Helvetica Neue',Helvetica,Arial,sans-serif;background:#f4f5f7;color:#1a1a2e;font-size:15px}
 .topbar{background:#1c3548;padding:14px 32px;display:flex;align-items:center;gap:16px}
 .topbar img{height:36px}
 .topbar-title{color:rgba(255,255,255,0.7);font-size:12px;letter-spacing:0.12em;text-transform:uppercase;margin-left:auto}
@@ -617,7 +619,7 @@ async function generatePDF(){
   newPage();
   doc.setFillColor(NAVY_R,NAVY_G,NAVY_B);
   doc.rect(0,0,W,H,'F');
-  doc.addImage('data:image/jpeg;base64,'+LOGO_WHITE,'JPEG',W/2-40,30,80,32.7);
+  doc.addImage('data:image/jpeg;base64,'+LOGO_WHITE,'JPEG',W/2-35,35,70,28.6);
   setWhite();
   doc.setFontSize(11); doc.setFont('helvetica','bold');
   doc.text('NEW BUILD MANAGEMENT REPORT', W/2, 138, {align:'center'});
