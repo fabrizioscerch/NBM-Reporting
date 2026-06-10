@@ -636,25 +636,25 @@ async function generatePDF(){
   newPage();
   doc.setFillColor(NAVY_R,NAVY_G,NAVY_B);
   doc.rect(0,0,W,H,'F');
-  doc.addImage('data:image/png;base64,'+LOGO_WHITE,'PNG',W/2-60,25,120,59.8);
+  doc.addImage('data:image/png;base64,'+LOGO_WHITE,'PNG',W/2-75,18,150,74.8);
   setWhite();
   doc.setFontSize(11); doc.setFont('helvetica','bold');
-  doc.text('NEW BUILD MANAGEMENT REPORT', W/2, 90, {align:'center'});
+  doc.text('NEW BUILD MANAGEMENT REPORT', W/2, 102, {align:'center'});
   doc.setFontSize(14); doc.setFont('helvetica','bold');
   const vname = v('vessel-builder')+(v('vessel-name')?' — '+v('vessel-name'):'');
-  doc.text(vname||'Vessel Name', W/2, 102, {align:'center'});
+  doc.text(vname||'Vessel Name', W/2, 114, {align:'center'});
   doc.setFontSize(10); doc.setFont('helvetica','normal');
   doc.setTextColor(180,200,215);
-  doc.text(monthLabel(v('sel-month'))||'Month Year', W/2, 114, {align:'center'});
+  doc.text(monthLabel(v('sel-month'))||'Month Year', W/2, 126, {align:'center'});
   doc.setDrawColor(255,255,255,0.3);
   doc.setLineWidth(0.3);
-  doc.line(W/2-30,125,W/2+30,125);
+  doc.line(W/2-30,137,W/2+30,137);
   setWhite(); doc.setFontSize(9);
-  doc.text('Prepared by '+v('nbm-name'), W/2, 133, {align:'center'});
-  doc.text('New Build Manager', W/2, 139, {align:'center'});
+  doc.text('Prepared by '+v('nbm-name'), W/2, 145, {align:'center'});
+  doc.text('New Build Manager', W/2, 151, {align:'center'});
   doc.setTextColor(140,170,190); doc.setFontSize(8);
-  doc.text(v('nbm-email'), W/2, 147, {align:'center'});
-  doc.text(v('nbm-phone'), W/2, 153, {align:'center'});
+  doc.text(v('nbm-email'), W/2, 159, {align:'center'});
+  doc.text(v('nbm-phone'), W/2, 165, {align:'center'});
 
   // ---- LETTER PAGE ----
   newPage();
@@ -947,7 +947,8 @@ async function generatePDF(){
   newPage();
   doc.setFillColor(NAVY_R,NAVY_G,NAVY_B);
   doc.rect(0,0,W,H,'F');
-  doc.addImage('data:image/png;base64,'+LOGO_WHITE,'PNG',W/2-60,H/2-27.6,120,55.3);$1; doc.setFont('helvetica','normal');
+  doc.addImage('data:image/png;base64,'+LOGO_WHITE,'PNG',W/2-75,H/2-34.5,150,69.0);
+  doc.setFontSize(9);$1; doc.setFont('helvetica','normal');
   doc.setTextColor(150,180,200);
   doc.text('United States — 1535 SE 17th St, Fort Lauderdale, FL 33316', W/2, H/2+38, {align:'center'});
   doc.text('Monaco — Le Panorama, 57 Rue Grimaldi, MC 98000', W/2, H/2+46, {align:'center'});
