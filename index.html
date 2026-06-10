@@ -636,7 +636,7 @@ async function generatePDF(){
   newPage();
   doc.setFillColor(NAVY_R,NAVY_G,NAVY_B);
   doc.rect(0,0,W,H,'F');
-  doc.addImage('data:image/png;base64,'+LOGO_WHITE,'PNG',W/2-27.5,18,55,27.9);
+  doc.addImage('data:image/png;base64,'+LOGO_WHITE,W/2-27.5,18,55,27.9);
   setWhite();
   doc.setFontSize(11); doc.setFont('helvetica','bold');
   doc.text('NEW BUILD MANAGEMENT REPORT', W/2, 56, {align:'center'});
@@ -947,7 +947,7 @@ async function generatePDF(){
   newPage();
   doc.setFillColor(NAVY_R,NAVY_G,NAVY_B);
   doc.rect(0,0,W,H,'F');
-  doc.addImage('data:image/png;base64,'+LOGO_WHITE,'PNG',W/2-27.5,H/2-13.95,55,27.9);
+  doc.addImage('data:image/png;base64,'+LOGO_WHITE,W/2-27.5,H/2-13.95,55,27.9);
   doc.setFontSize(9);$1; doc.setFont('helvetica','normal');
   doc.setTextColor(150,180,200);
   doc.text('United States — 1535 SE 17th St, Fort Lauderdale, FL 33316', W/2, H/2+38, {align:'center'});
