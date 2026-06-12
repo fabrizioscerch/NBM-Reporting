@@ -33729,25 +33729,27 @@ async function loadAnnex(e, prefix){
         const pdfDoc = await pdfjsLib.getDocument({data: buf}).promise;
         if(previewEl){
           // Render each PDF page to canvas, then to <img> with data URI.
-          // Preserves layout, photos, tables, formatting — visually identical to original.
+          // Scale 2.5 ≈ 240dpi, producing sharp text and crisp images even after
+          // Word downscales them for display. The data-pdf-page attribute lets
+          // the docx converter force a page break before each one.
           const htmlParts = [];
-          if(nameEl) nameEl.textContent = '✓ '+file.name+' — rendering '+pdfDoc.numPages+' page(s)…';
+          if(nameEl) nameEl.textContent = '✓ '+file.name+' — rendering '+pdfDoc.numPages+' page(s) at high resolution…';
           for(let i=1; i<=pdfDoc.numPages; i++){
             const page = await pdfDoc.getPage(i);
-            // Use a moderate scale so output PNGs are sharp but not huge
-            const viewport = page.getViewport({ scale: 1.5 });
+            const viewport = page.getViewport({ scale: 2.5 });
             const canvas = document.createElement('canvas');
             canvas.width = viewport.width;
             canvas.height = viewport.height;
             const ctx = canvas.getContext('2d');
             await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-            const dataUrl = canvas.toDataURL('image/png');
-            htmlParts.push('<p><img src="'+dataUrl+'" alt="page '+i+'" style="max-width:100%;display:block;margin:0 auto 12px auto;border:1px solid #e0e2e6;" /></p>');
+            // Use JPEG at 0.92 quality for smaller file size; text stays crisp
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+            htmlParts.push('<p data-pdf-page="'+i+'"><img src="'+dataUrl+'" alt="page '+i+'" style="max-width:100%;display:block;margin:0 auto 8px auto;border:1px solid #e0e2e6;" /></p>');
           }
           extractedHtml = htmlParts.join('\n');
-          if(nameEl) nameEl.textContent = '✓ '+file.name;
+          if(nameEl) nameEl.textContent = '✓ '+file.name+'  ('+pdfDoc.numPages+' page(s) embedded)';
         } else {
-          // No preview area (shouldn't happen for paint/int/log anymore) — fall back to text
+          // No preview area — fall back to text extraction
           let text = '';
           for(let i=1; i<=pdfDoc.numPages; i++){
             const page = await pdfDoc.getPage(i);
@@ -33964,6 +33966,8 @@ async function generateDOCX() {
 
     // Max content width in pixels (≈170mm of A4 content area at 96dpi)
     const MAX_IMG_W_PX = 640;
+    // Max content height: A4 297mm - 20mm top - 25mm bottom margin - 12mm footer ≈ 240mm ≈ 740px
+    const MAX_IMG_H_PX = 740;
 
     // Inline element → array of TextRun
     function nodeToRuns(node, style) {
@@ -34001,25 +34005,35 @@ async function generateDOCX() {
       return runs;
     }
 
-    // Render an <img> into a docx.Paragraph containing an ImageRun
-    async function imgToParagraph(imgEl) {
+    // Render an <img> into a docx.Paragraph containing an ImageRun.
+    // opts.pageBreakBefore inserts a page break (used for PDF-page images).
+    async function imgToParagraph(imgEl, opts) {
+      opts = opts || {};
       const src = imgEl.getAttribute('src') || '';
       if (!src.startsWith('data:image/')) {
         return new Paragraph({
           children: [ new TextRun({ text: '[image not embedded]', italics:true, size:18, color:"888888" }) ],
           spacing: { before: 40, after: 40 },
+          pageBreakBefore: !!opts.pageBreakBefore,
         });
       }
       const { w, h } = await measureImage(src);
       let dw = w, dh = h;
+      // Cap by width first
       if (dw > MAX_IMG_W_PX) {
         dh = Math.round(dh * MAX_IMG_W_PX / dw);
         dw = MAX_IMG_W_PX;
       }
+      // Then cap by height (preserve aspect ratio)
+      if (dh > MAX_IMG_H_PX) {
+        dw = Math.round(dw * MAX_IMG_H_PX / dh);
+        dh = MAX_IMG_H_PX;
+      }
       const bytes = dataUriToBytes(src);
       return new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { before: 80, after: 80 },
+        spacing: { before: 0, after: 0 },
+        pageBreakBefore: !!opts.pageBreakBefore,
         children: [
           new ImageRun({
             type: dataUriType(src),
@@ -34156,10 +34170,23 @@ async function generateDOCX() {
           out.length = 0;
           out.push(...savedOut);
         } else if (t === 'p') {
+          // Special case: <p data-pdf-page="N"> wraps a PDF-rendered page image.
+          // Each one gets its own document page via pageBreakBefore (skip first).
+          const pdfPageAttr = node.getAttribute && node.getAttribute('data-pdf-page');
+          if (pdfPageAttr) {
+            const pageNum = parseInt(pdfPageAttr, 10);
+            for (const c of Array.from(node.children)) {
+              if (c.tagName.toLowerCase()==='img'){
+                const p = await imgToParagraph(c, { pageBreakBefore: pageNum > 1 });
+                localOut.push(p);
+              }
+            }
+            continue;
+          }
           const runs = nodeToRuns(node, {});
           if (runs.length) localOut.push(new Paragraph({ children: runs, spacing:{before:60,after:60} }));
           else localOut.push(new Paragraph({ spacing:{before:40,after:40} }));
-          // p may also contain images
+          // p may also contain images (regular inline images from docx)
           for (const c of Array.from(node.children)) {
             if (c.tagName.toLowerCase()==='img'){
               const p = await imgToParagraph(c);
@@ -34308,9 +34335,17 @@ async function generateDOCX() {
   }
 
   // ── footer: small horizontal logo on the left + "Page X" on the right ─────
-  // Logo at 25mm wide (about 94px); ~10pt grey text for the page number.
-  const fLogoWpx = Math.round(25/25.4*96);                  // ≈ 94 px
-  const fLogoHpx = Math.round(fLogoWpx / (2286/1161));      // preserved aspect ratio
+  // Measure the actual color logo aspect ratio so it never gets distorted
+  // (LOGO_WHITE and LOGO_COLOR have different aspect ratios).
+  const colorLogoAspect = await new Promise(res => {
+    const img = new Image();
+    img.onload  = () => res(img.naturalWidth / img.naturalHeight);
+    img.onerror = () => res(2286 / 1161);
+    img.src = 'data:image/png;base64,' + LOGO_COLOR;
+  });
+  // Footer logo target: 28mm wide → ~106 px
+  const fLogoWpx = Math.round(28/25.4*96);
+  const fLogoHpx = Math.round(fLogoWpx / colorLogoAspect);
 
   function buildFooter(showLogo, reportLabel) {
     if (!showLogo) {
