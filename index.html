@@ -33424,7 +33424,7 @@ NauticALL and Class will need to reattend on [date] for the witnessing of [miles
         <div class="fl"><label>Areas Inspected</label><input type="text" id="paint-areas" placeholder="e.g. Hull plating, Superstructure, Deck — steel detailing and conditioning"></div>
         <div class="fl"><label>Findings &amp; Open Items</label><textarea id="paint-findings" rows="5" placeholder="[STANDARD TEXT — TO BE CUSTOMIZED] Summarize the paint surveyor's key findings and any open items for this month..."></textarea></div>
         <div class="fl" style="margin-top:8px">
-          <label>Surveyor Report Annex <span class="opt">(upload .docx or .pdf — formatting preserved for .docx)</span></label>
+          <label>Surveyor Report Annex <span class="opt">(upload .pdf — imported as page images, or .docx — formatting preserved and editable)</span></label>
           <div class="gantt-zone" id="paint-annex-zone" style="padding:16px;">
             <input type="file" id="paint-annex-file" accept=".docx,.pdf" onchange="loadAnnex(event,'paint')">
             <svg width="22" height="22" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -33460,7 +33460,7 @@ NauticALL and Class will need to reattend on [date] for the witnessing of [miles
         <div class="fl"><label>Areas Inspected</label><input type="text" id="int-areas" placeholder="e.g. Joinery, Upholstery, Master cabin, Guest cabins, Saloon fit-out"></div>
         <div class="fl"><label>Findings &amp; Open Items</label><textarea id="int-findings" rows="5" placeholder="[STANDARD TEXT — TO BE CUSTOMIZED] Summarize the interiors surveyor's key findings and any open items for this month..."></textarea></div>
         <div class="fl" style="margin-top:8px">
-          <label>Surveyor Report Annex <span class="opt">(upload .docx or .pdf — formatting preserved for .docx)</span></label>
+          <label>Surveyor Report Annex <span class="opt">(upload .pdf — imported as page images, or .docx — formatting preserved and editable)</span></label>
           <div class="gantt-zone" id="int-annex-zone" style="padding:16px;">
             <input type="file" id="int-annex-file" accept=".docx,.pdf" onchange="loadAnnex(event,'int')">
             <svg width="22" height="22" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -33530,7 +33530,7 @@ NauticALL and Class will need to reattend on [date] for the witnessing of [miles
     </div>
     <div class="card-body" id="b-s8">
       <div class="fl">
-        <label>Pinpoint Report <span class="opt">(upload .pdf or .docx — formatting preserved for .docx)</span></label>
+        <label>Pinpoint Report <span class="opt">(upload .pdf — imported as page images, or .docx — formatting preserved and editable)</span></label>
         <div class="gantt-zone" id="log-annex-zone" style="padding:16px;">
           <input type="file" id="log-annex-file" accept=".docx,.pdf" onchange="loadAnnex(event,'log')">
           <svg width="22" height="22" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -33729,9 +33729,10 @@ async function loadAnnex(e, prefix){
         const pdfDoc = await pdfjsLib.getDocument({data: buf}).promise;
         if(previewEl){
           // Render each PDF page to canvas, then to <img> with data URI.
-          // Scale 2.5 ≈ 240dpi, producing sharp text and crisp images even after
-          // Word downscales them for display. The data-pdf-page attribute lets
-          // the docx converter force a page break before each one.
+          // Scale 2.5 ≈ 240dpi for sharp text. PNG output with transparent
+          // canvas background so the document's light grey page color shows
+          // through where the PDF page is white. The data-pdf-page attribute
+          // lets the docx converter force a page break and vertically center.
           const htmlParts = [];
           if(nameEl) nameEl.textContent = '✓ '+file.name+' — rendering '+pdfDoc.numPages+' page(s) at high resolution…';
           for(let i=1; i<=pdfDoc.numPages; i++){
@@ -33741,10 +33742,14 @@ async function loadAnnex(e, prefix){
             canvas.width = viewport.width;
             canvas.height = viewport.height;
             const ctx = canvas.getContext('2d');
-            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-            // Use JPEG at 0.92 quality for smaller file size; text stays crisp
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-            htmlParts.push('<p data-pdf-page="'+i+'"><img src="'+dataUrl+'" alt="page '+i+'" style="max-width:100%;display:block;margin:0 auto 8px auto;border:1px solid #e0e2e6;" /></p>');
+            // Important: render with transparent background so PNG retains alpha
+            await page.render({
+              canvasContext: ctx,
+              viewport: viewport,
+              background: 'rgba(0,0,0,0)',
+            }).promise;
+            const dataUrl = canvas.toDataURL('image/png');
+            htmlParts.push('<p data-pdf-page="'+i+'"><img src="'+dataUrl+'" alt="page '+i+'" style="max-width:100%;display:block;margin:0 auto 8px auto;background:#f4f5f7;" /></p>');
           }
           extractedHtml = htmlParts.join('\n');
           if(nameEl) nameEl.textContent = '✓ '+file.name+'  ('+pdfDoc.numPages+' page(s) embedded)';
@@ -34007,6 +34012,7 @@ async function generateDOCX() {
 
     // Render an <img> into a docx.Paragraph containing an ImageRun.
     // opts.pageBreakBefore inserts a page break (used for PDF-page images).
+    // opts.centerVertically computes spacing.before to center the image on the page.
     async function imgToParagraph(imgEl, opts) {
       opts = opts || {};
       const src = imgEl.getAttribute('src') || '';
@@ -34029,10 +34035,18 @@ async function generateDOCX() {
         dw = Math.round(dw * MAX_IMG_H_PX / dh);
         dh = MAX_IMG_H_PX;
       }
+      // Vertical centering: page content area ≈ 900px tall (after footer).
+      // Compute spacing.before so the empty space above and below the image is balanced.
+      let spacingBefore = 0;
+      if (opts.centerVertically) {
+        const pageContentHpx = 880;
+        const offsetPx = Math.max(0, (pageContentHpx - dh) / 2);
+        spacingBefore = Math.round(offsetPx * 15); // 1px ≈ 15 dxa
+      }
       const bytes = dataUriToBytes(src);
       return new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { before: 0, after: 0 },
+        spacing: { before: spacingBefore, after: 0 },
         pageBreakBefore: !!opts.pageBreakBefore,
         children: [
           new ImageRun({
@@ -34177,7 +34191,10 @@ async function generateDOCX() {
             const pageNum = parseInt(pdfPageAttr, 10);
             for (const c of Array.from(node.children)) {
               if (c.tagName.toLowerCase()==='img'){
-                const p = await imgToParagraph(c, { pageBreakBefore: pageNum > 1 });
+                const p = await imgToParagraph(c, {
+                  pageBreakBefore: pageNum > 1,
+                  centerVertically: true,
+                });
                 localOut.push(p);
               }
             }
