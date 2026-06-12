@@ -33727,13 +33727,35 @@ async function loadAnnex(e, prefix){
       if(pdfjsLib) {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         const pdfDoc = await pdfjsLib.getDocument({data: buf}).promise;
-        let text = '';
-        for(let i=1; i<=pdfDoc.numPages; i++){
-          const page = await pdfDoc.getPage(i);
-          const content = await page.getTextContent();
-          text += content.items.map(s=>s.str).join(' ') + '\n';
+        if(previewEl){
+          // Render each PDF page to canvas, then to <img> with data URI.
+          // Preserves layout, photos, tables, formatting — visually identical to original.
+          const htmlParts = [];
+          if(nameEl) nameEl.textContent = '✓ '+file.name+' — rendering '+pdfDoc.numPages+' page(s)…';
+          for(let i=1; i<=pdfDoc.numPages; i++){
+            const page = await pdfDoc.getPage(i);
+            // Use a moderate scale so output PNGs are sharp but not huge
+            const viewport = page.getViewport({ scale: 1.5 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+            const dataUrl = canvas.toDataURL('image/png');
+            htmlParts.push('<p><img src="'+dataUrl+'" alt="page '+i+'" style="max-width:100%;display:block;margin:0 auto 12px auto;border:1px solid #e0e2e6;" /></p>');
+          }
+          extractedHtml = htmlParts.join('\n');
+          if(nameEl) nameEl.textContent = '✓ '+file.name;
+        } else {
+          // No preview area (shouldn't happen for paint/int/log anymore) — fall back to text
+          let text = '';
+          for(let i=1; i<=pdfDoc.numPages; i++){
+            const page = await pdfDoc.getPage(i);
+            const content = await page.getTextContent();
+            text += content.items.map(s=>s.str).join(' ') + '\n';
+          }
+          extractedText = text;
         }
-        extractedText = text;
       } else {
         extractedText = '[PDF extraction library not loaded — please paste content manually]';
       }
@@ -34266,7 +34288,7 @@ async function generateDOCX() {
               margins: { top: 160, bottom: 160, left: 280, right: 280 },
               borders: {
                 top:    { style: BorderStyle.NONE, size: 0, color: "auto" },
-                bottom: { style: BorderStyle.SINGLE, size: 24, color: "C49A4A" },
+                bottom: { style: BorderStyle.SINGLE, size: 24, color: "5B7E95" },
                 left:   { style: BorderStyle.NONE, size: 0, color: "auto" },
                 right:  { style: BorderStyle.NONE, size: 0, color: "auto" },
               },
@@ -34290,7 +34312,7 @@ async function generateDOCX() {
   const fLogoWpx = Math.round(25/25.4*96);                  // ≈ 94 px
   const fLogoHpx = Math.round(fLogoWpx / (2286/1161));      // preserved aspect ratio
 
-  function buildFooter(showLogo) {
+  function buildFooter(showLogo, reportLabel) {
     if (!showLogo) {
       return new docx.Footer({
         children: [ new Paragraph({
@@ -34301,14 +34323,14 @@ async function generateDOCX() {
         })],
       });
     }
-    // Two-column footer: logo left | page number right
+    // Two-column footer: logo left | report label + page number right
     return new docx.Footer({
       children: [
         new Table({
           width: { size: 9500, type: WidthType.DXA },
           columnWidths: [3500, 6000],
           borders: {
-            top: { style: BorderStyle.SINGLE, size: 4, color: "D0D8E0" },
+            top: { style: BorderStyle.SINGLE, size: 4, color: "5B7E95" },
             bottom: { style: BorderStyle.NONE, size:0, color:"auto" },
             left:   { style: BorderStyle.NONE, size:0, color:"auto" },
             right:  { style: BorderStyle.NONE, size:0, color:"auto" },
@@ -34339,14 +34361,22 @@ async function generateDOCX() {
                 borders: noBorders,
                 margins: { top: 120, bottom: 60, left: 0, right: 0 },
                 verticalAlign: VerticalAlign.CENTER,
-                children: [ new Paragraph({
-                  alignment: AlignmentType.RIGHT,
-                  spacing: { before: 0, after: 0 },
-                  children: [
-                    new TextRun({ text: "NauticALL  ·  New Build Management Report  ·  ", color: "8090A0", size: 16, font: "Calibri" }),
-                    new TextRun({ children: ["Page ", docx.PageNumber.CURRENT, " / ", docx.PageNumber.TOTAL_PAGES], color: NAVY, size: 16, font: "Calibri", bold: true }),
-                  ],
-                }) ],
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    spacing: { before: 0, after: 0 },
+                    children: [
+                      new TextRun({ text: reportLabel || "New Build Management Report", color: NAVY, size: 16, font: "Calibri", bold: true }),
+                    ],
+                  }),
+                  new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    spacing: { before: 40, after: 0 },
+                    children: [
+                      new TextRun({ children: ["Page ", docx.PageNumber.CURRENT, " / ", docx.PageNumber.TOTAL_PAGES], color: "5B7E95", size: 14, font: "Calibri" }),
+                    ],
+                  }),
+                ],
               }),
             ],
           }) ],
@@ -34357,16 +34387,22 @@ async function generateDOCX() {
 
   function buildSectionProps(opts) {
     opts = opts || {};
-    const props = {
-      page: {
-        size: { width: 11906, height: 16838 },
-        margin: { top: marginDxa, right: marginDxa, bottom: mm2dxa(25), left: marginDxa },
+    // Returns a partial section object: properties + (optional) footers.
+    // Caller spreads this into sections.push, then adds children separately.
+    const out = {
+      properties: {
+        page: {
+          size: { width: 11906, height: 16838 },
+          margin: { top: marginDxa, right: marginDxa, bottom: mm2dxa(25), left: marginDxa },
+        },
       },
     };
     if (opts.withFooter) {
-      props.footers = { default: buildFooter(true) };
+      const label = ((vesselBuilder || '') + (vesselName ? ' — '+vesselName : '')).trim() || 'New Build Management Report';
+      const fullLabel = reportMonth ? (label + '  ·  ' + reportMonth) : label;
+      out.footers = { default: buildFooter(true, fullLabel) };
     }
-    return props;
+    return out;
   }
 
   // ── progress bar ──────────────────────────────────────────────────────────
@@ -34446,12 +34482,12 @@ async function generateDOCX() {
         }),
       ],
     }),
-    coverPara("NEW BUILD MANAGEMENT REPORT", { color:"C49A4A", size:22, spacing_chars: 80, spacing:{before:200,after:120} }),
+    coverPara("NEW BUILD MANAGEMENT REPORT", { color:"5B7E95", size:22, spacing_chars: 80, spacing:{before:200,after:120} }),
     // gold rule
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 0, after: 240 },
-      children: [ new TextRun({ text: "—————————", color:"C49A4A", size:20, font:"Calibri" }) ],
+      children: [ new TextRun({ text: "—————————", color:"5B7E95", size:20, font:"Calibri" }) ],
     }),
     coverPara((vesselBuilder + (vesselName ? ' — '+vesselName : '')) || 'Vessel Name', { size:44, spacing:{before:0,after:160} }),
     coverPara(reportMonth || 'Month Year', { color:"B4C8D7", size:26, bold:false, italics:true, spacing:{before:0,after:1200} }),
@@ -34481,7 +34517,7 @@ async function generateDOCX() {
       },
       rows: [
         new TableRow({
-          height: { value: 14500, rule: "atLeast" },
+          
           children: [
             new TableCell({
               width: { size: 9500, type: WidthType.DXA },
@@ -34503,7 +34539,7 @@ async function generateDOCX() {
   ];
 
   sections.push({
-    properties: buildSectionProps({ withFooter: false }),
+    ...buildSectionProps({ withFooter: false }),
     children: coverChildren,
   });
 
@@ -34527,7 +34563,7 @@ async function generateDOCX() {
   ];
 
   sections.push({
-    properties: buildSectionProps({ withFooter: true }),
+    ...buildSectionProps({ withFooter: true }),
     children: letterChildren,
   });
 
@@ -34546,7 +34582,7 @@ async function generateDOCX() {
   ];
 
   sections.push({
-    properties: buildSectionProps({ withFooter: true }),
+    ...buildSectionProps({ withFooter: true }),
     children: [
       sectionHeading("Table of Contents"),
       emptyPara(),
@@ -34574,7 +34610,7 @@ async function generateDOCX() {
   }
 
   sections.push({
-    properties: buildSectionProps({ withFooter: true }),
+    ...buildSectionProps({ withFooter: true }),
     children: s1Children,
   });
 
@@ -34585,37 +34621,50 @@ async function generateDOCX() {
 
   if (ganttFile) {
     pb.textContent = 'Adding Gantt chart…';
-    const ganttBytes = await fileToUint8(ganttFile);
-    const ext = ganttFile.name.split('.').pop().toLowerCase();
-    const imgType = ext==='jpg'||ext==='jpeg' ? 'jpg' : 'png';
-    // Measure real dimensions so aspect ratio is preserved (and no 90° rotation glitch)
-    const ganttDims = await new Promise(res => {
+    // Load image into an <img>, then draw to a canvas to bake in any EXIF rotation
+    // and strip the EXIF metadata. docx.js embeds raw bytes without honoring EXIF,
+    // so we need the canvas bytes (which are post-rotation) for correct display.
+    const ganttImgEl = await new Promise((resolve, reject) => {
       const img = new Image();
-      img.onload  = () => res({ w: img.naturalWidth, h: img.naturalHeight });
-      img.onerror = () => res({ w: 640, h: 360 });
+      img.onload  = () => resolve(img);
+      img.onerror = reject;
       img.src = URL.createObjectURL(ganttFile);
-    });
-    // Target width = content width (~170mm at 96dpi ≈ 640px)
-    const targetWpx = 640;
-    let ganttW = targetWpx;
-    let ganttH = Math.round(targetWpx * (ganttDims.h / ganttDims.w));
-    // If image is taller than wide AND the resulting height would push it off the page, scale by height
-    const maxHpx = 900; // ~A4 content height
-    if (ganttH > maxHpx) {
-      ganttW = Math.round(ganttW * maxHpx / ganttH);
-      ganttH = maxHpx;
+    }).catch(() => null);
+
+    if (ganttImgEl) {
+      const cvs = document.createElement('canvas');
+      cvs.width  = ganttImgEl.naturalWidth;
+      cvs.height = ganttImgEl.naturalHeight;
+      const cctx = cvs.getContext('2d');
+      cctx.drawImage(ganttImgEl, 0, 0);
+      const dataUrl = cvs.toDataURL('image/png');
+      const b64 = dataUrl.split(',')[1];
+      const bin = atob(b64);
+      const ganttBytes = new Uint8Array(bin.length);
+      for (let i=0; i<bin.length; i++) ganttBytes[i] = bin.charCodeAt(i);
+
+      // Target width = content width (~170mm at 96dpi ≈ 640px). Preserve aspect ratio.
+      const targetWpx = 640;
+      let ganttW = targetWpx;
+      let ganttH = Math.round(targetWpx * (cvs.height / cvs.width));
+      // If the image is much taller than the page, cap by height
+      const maxHpx = 900; // ~A4 content height
+      if (ganttH > maxHpx) {
+        ganttW = Math.round(ganttW * maxHpx / ganttH);
+        ganttH = maxHpx;
+      }
+      s2Children.push(new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before:120, after:120 },
+        children: [
+          new ImageRun({
+            type: 'png',
+            data: ganttBytes,
+            transformation: { width: ganttW, height: ganttH },
+          }),
+        ],
+      }));
     }
-    s2Children.push(new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { before:120, after:120 },
-      children: [
-        new ImageRun({
-          type: imgType,
-          data: ganttBytes,
-          transformation: { width: ganttW, height: ganttH },
-        }),
-      ],
-    }));
   }
 
   if (v('schedule-text')) {
@@ -34638,7 +34687,7 @@ async function generateDOCX() {
   }
 
   sections.push({
-    properties: buildSectionProps({ withFooter: true }),
+    ...buildSectionProps({ withFooter: true }),
     children: s2Children,
   });
 
@@ -34726,7 +34775,7 @@ async function generateDOCX() {
   }
 
   sections.push({
-    properties: buildSectionProps({ withFooter: true }),
+    ...buildSectionProps({ withFooter: true }),
     children: s3Children,
   });
 
@@ -34769,7 +34818,7 @@ async function generateDOCX() {
     }
 
     sections.push({
-      properties: buildSectionProps({ withFooter: true }),
+      ...buildSectionProps({ withFooter: true }),
       children: s4Children,
     });
   }
@@ -34813,7 +34862,7 @@ async function generateDOCX() {
     }
 
     sections.push({
-      properties: buildSectionProps({ withFooter: true }),
+      ...buildSectionProps({ withFooter: true }),
       children: s5Children,
     });
   }
@@ -34885,7 +34934,7 @@ async function generateDOCX() {
     }
 
     sections.push({
-      properties: buildSectionProps({ withFooter: true }),
+      ...buildSectionProps({ withFooter: true }),
       children: s6Children,
     });
   }
@@ -34941,7 +34990,7 @@ async function generateDOCX() {
   }
 
   sections.push({
-    properties: buildSectionProps({ withFooter: true }),
+    ...buildSectionProps({ withFooter: true }),
     children: s7Children,
   });
 
@@ -34958,7 +35007,7 @@ async function generateDOCX() {
   }
 
   sections.push({
-    properties: buildSectionProps({ withFooter: true }),
+    ...buildSectionProps({ withFooter: true }),
     children: s8Children,
   });
 
@@ -34981,12 +35030,12 @@ async function generateDOCX() {
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 240 },
-      children: [ new TextRun({ text: "YACHT & CREW MANAGEMENT", color:"C49A4A", size:20, font:"Calibri", characterSpacing: 60, bold:true }) ],
+      children: [ new TextRun({ text: "YACHT & CREW MANAGEMENT", color:"5B7E95", size:20, font:"Calibri", characterSpacing: 60, bold:true }) ],
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 0, after: 600 },
-      children: [ new TextRun({ text: "—————————", color:"C49A4A", size:18, font:"Calibri" }) ],
+      children: [ new TextRun({ text: "—————————", color:"5B7E95", size:18, font:"Calibri" }) ],
     }),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:240,after:60}, children:[ new TextRun({ text:"UNITED STATES", color:"8CAABE", size:16, font:"Calibri", bold:true, characterSpacing:60 }) ] }),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:0,after:240}, children:[ new TextRun({ text:"1535 SE 17th St, Fort Lauderdale, FL 33316", color:WHITE, size:20, font:"Calibri" }) ] }),
@@ -34997,7 +35046,7 @@ async function generateDOCX() {
   ];
 
   sections.push({
-    properties: buildSectionProps({ withFooter: false }),
+    ...buildSectionProps({ withFooter: false }),
     children:[
       new Table({
         width: { size: 9500, type: WidthType.DXA },
@@ -35012,7 +35061,7 @@ async function generateDOCX() {
         },
         rows: [
           new TableRow({
-            height: { value: 14500, rule: "atLeast" },
+            
             children: [
               new TableCell({
                 width: { size: 9500, type: WidthType.DXA },
@@ -35041,6 +35090,7 @@ async function generateDOCX() {
 
   const doc = new docx.Document({
     sections,
+    background: { color: "D9D9D9" },
     numbering: {
       config: [{
         reference: "default-numbering",
