@@ -33333,18 +33333,21 @@ window.docx = module.exports;
     </div>
   </div>
 
-  <!-- S1 EXECUTIVE SUMMARY -->
+  <!-- S1 GENERAL OVERVIEW -->
   <div class="card">
     <div class="card-header" onclick="toggleCard('s1')">
-      <div class="card-title"><div class="sec-num">1</div><span class="sec-label">Executive Summary</span></div>
+      <div class="card-title"><div class="sec-num">1</div><span class="sec-label">General Overview</span></div>
       <span class="chevron" id="ch-s1">&#8964;</span>
     </div>
     <div class="card-body" id="b-s1">
-      <div class="fl"><label>Summary</label><textarea id="exec-summary" rows="7">During the month of [Month], the shipyard made great progress with [describe main activity].
+      <div class="fl"><label>Summary</label><textarea id="exec-summary" rows="9">During the month of [Month], the shipyard made great progress with [describe main activity].
 
 NauticALL has been actively engaged on behalf of the owner, monitoring construction quality, schedule adherence and contractual milestones to ensure the owner's interests are fully protected at every stage.
 
+This report covers the following topics: Production Schedule &amp; Milestones, Change Orders, Paint Inspection, Interiors Inspection, Progress Media, Buyer's Decision Making and Construction Log. Each section can be accessed directly by clicking on the corresponding link in the table of contents or within this overview.
+
 The last attendance was on [date] and the next visit is planned on [date].</textarea></div>
+      <div class="fl"><label>Crew <span class="opt">(optional — complete only if crew joined onboard this month)</span></label><textarea id="crew-notes" rows="4">[If applicable] During the month of [Month], [Crew Member Name] joined the vessel onboard as [Position/Role]. NauticALL was available to assist and coordinate as needed to ensure a smooth integration of the crew during this phase of the build.</textarea></div>
       <div class="g2">
         <div class="fl"><label>Last Site Visit</label><input type="date" id="last-visit"></div>
         <div class="fl"><label>Next Site Visit Planned</label><input type="date" id="next-visit"></div>
@@ -33505,7 +33508,10 @@ NauticALL and Class will need to reattend on [date] for the witnessing of [miles
       </div>
       <div id="media-grid"></div>
       <div id="media-captions"></div>
-      <div class="fl" style="margin-top:12px"><label>Video Links <span class="opt">(Google Drive, Dropbox or Vimeo — one per line)</span></label><textarea id="video-links" rows="3" placeholder="https://drive.google.com/..."></textarea></div>
+      <div class="fl" style="margin-top:16px">
+        <label>Videos <span class="opt">(upload video files — up to 4, shown as play icons in the report)</span></label>
+        <div id="video-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:8px"></div>
+      </div>
     </div>
   </div>
 
@@ -33558,7 +33564,7 @@ NauticALL and Class will need to reattend on [date] for the witnessing of [miles
       <button class="draft-btn" onclick="document.getElementById('draft-load-input').click()" type="button">📂 Load Draft</button>
       <input type="file" id="draft-load-input" accept=".json" onchange="loadDraft(event)" style="display:none;">
     </div>
-    <button class="gen-btn" onclick="generateDOCX()">&#8595; Generate Report DOCX</button>
+    <button class="gen-btn" onclick="generateDOCX()">&#8595; Generate Report</button>
     <div class="progress-bar" id="progress-bar">Building your Word document...</div>
   </div>
 
@@ -33721,6 +33727,71 @@ function rebuildMedia(){
     cap.style.width='100%';
     cap.value=(mediaFiles[i]&&mediaFiles[i].caption)||'';
     cap.addEventListener('change',e=>{if(mediaFiles[i]) mediaFiles[i].caption=e.target.value;});
+    cell.appendChild(slot);
+    cell.appendChild(cap);
+    grid.appendChild(cell);
+  }
+}
+
+// ── Video upload slots (up to 4, similar to photo slots) ──────────────────
+let videoFiles = {};
+const MAX_VIDEOS = 4;
+
+function rebuildVideos() {
+  const grid = document.getElementById('video-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (let i = 0; i < MAX_VIDEOS; i++) {
+    const cell = document.createElement('div');
+    cell.style.display = 'flex';
+    cell.style.flexDirection = 'column';
+    cell.style.gap = '6px';
+
+    const slot = document.createElement('div');
+    slot.className = 'media-slot';
+    slot.style.aspectRatio = '1/1';
+
+    if (videoFiles[i]) {
+      // Show play icon overlay + filename
+      slot.innerHTML = `
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#1c354815;gap:4px">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="19" fill="#1c3548"/><polygon points="14,10 14,30 32,20" fill="#fff"/></svg>
+          <span style="font-size:10px;color:#555;text-align:center;max-width:90%;word-break:break-all;padding:0 4px">${videoFiles[i].name}</span>
+        </div>`;
+    } else {
+      slot.innerHTML = `
+        <svg width="28" height="28" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="19" fill="#e0e2e6"/><polygon points="14,10 14,30 32,20" fill="#bbb"/></svg>
+        <span class="media-slot-label">Add video</span>`;
+    }
+
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = 'video/*';
+    inp.style.position = 'absolute';
+    inp.style.inset = '0';
+    inp.style.opacity = '0';
+    inp.style.cursor = 'pointer';
+    inp.style.width = '100%';
+    inp.style.height = '100%';
+    inp.addEventListener('change', e => {
+      const f = e.target.files[0]; if (!f) return;
+      videoFiles[i] = { file: f, name: f.name, caption: '' };
+      rebuildVideos();
+    });
+    slot.appendChild(inp);
+
+    const cap = document.createElement('input');
+    cap.type = 'text';
+    cap.placeholder = 'Caption (optional)';
+    cap.id = 'vcap-' + i;
+    cap.style.fontSize = '12px';
+    cap.style.padding = '5px 8px';
+    cap.style.border = '1px solid #e0e2e6';
+    cap.style.borderRadius = '6px';
+    cap.style.width = '100%';
+    cap.value = (videoFiles[i] && videoFiles[i].caption) || '';
+    cap.addEventListener('change', e => { if (videoFiles[i]) videoFiles[i].caption = e.target.value; });
+
     cell.appendChild(slot);
     cell.appendChild(cap);
     grid.appendChild(cell);
@@ -33996,6 +34067,21 @@ async function saveDraft() {
     }
   }
 
+  // Video files
+  for (const k in videoFiles) {
+    if (videoFiles[k] && videoFiles[k].file) {
+      const vf = videoFiles[k];
+      const cap = document.getElementById('vcap-'+k);
+      draft.videos = draft.videos || {};
+      draft.videos[k] = {
+        name: vf.file.name,
+        type: vf.file.type,
+        data: await _fileToBase64(vf.file),
+        caption: cap ? cap.value : vf.caption || '',
+      };
+    }
+  }
+
   // Gantt
   if (typeof ganttFile !== 'undefined' && ganttFile) {
     draft.gantt = {
@@ -34138,6 +34224,22 @@ async function loadDraft(event) {
       }
     }, 50);
 
+    // Restore video files
+    for (const k of Object.keys(videoFiles)) delete videoFiles[k];
+    for (const k in (draft.videos || {})) {
+      const vd = draft.videos[k];
+      const blob = _base64ToBlob(vd.data, vd.type);
+      const f = new File([blob], vd.name, { type: vd.type });
+      videoFiles[k] = { file: f, name: vd.name, caption: vd.caption || '' };
+    }
+    if (typeof rebuildVideos === 'function') rebuildVideos();
+    setTimeout(() => {
+      for (const k in (draft.videos || {})) {
+        const capEl = document.getElementById('vcap-'+k);
+        if (capEl) capEl.value = draft.videos[k].caption || '';
+      }
+    }, 50);
+
     // Restore Gantt
     if (draft.gantt) {
       const blob = _base64ToBlob(draft.gantt.data, draft.gantt.type);
@@ -34211,8 +34313,34 @@ async function generateDOCX() {
     PageOrientation, HeadingLevel, VerticalAlign,
     HorizontalPositionAlign, VerticalPositionAlign,
     HorizontalPositionRelativeFrom, VerticalPositionRelativeFrom,
-    TextWrappingType,
+    TextWrappingType, Bookmark, InternalHyperlink, ExternalHyperlink,
   } = docx;
+
+  // Helper: creates a zero-height bookmark anchor paragraph to target with InternalHyperlink
+  function sectionAnchor(id) {
+    return new Paragraph({
+      spacing: { before: 0, after: 0 },
+      children: [
+        new Bookmark({ id, children: [ new TextRun({ text: "", size: 2 }) ] }),
+      ],
+    });
+  }
+
+  // Helper: creates an InternalHyperlink run inside a paragraph
+  function internalLinkPara(label, anchor, opts={}) {
+    const { size=20, spacing={before:24,after:24} } = opts;
+    return new Paragraph({
+      spacing,
+      children: [
+        new InternalHyperlink({
+          anchor,
+          children: [
+            new TextRun({ text: "• " + label, color: "2864A0", underline: {}, size, font: "Calibri" }),
+          ],
+        }),
+      ],
+    });
+  }
 
   const NAVY = "1C3548";
   const WHITE = "FFFFFF";
@@ -35016,36 +35144,77 @@ async function generateDOCX() {
   // ══════════════════════════════════════════════════════════════════════════
   // Build TOC dynamically — keep section numbers fixed (1-8) but omit any
   // sections that are toggled off or empty, so TOC and body always match.
-  const tocItems = [];
-  tocItems.push("1.  Executive Summary");
-  tocItems.push("2.  Production Schedule & Milestones");
-  tocItems.push("3.  Change Orders");
-  if (document.getElementById('paint-cb').checked) tocItems.push("4.  Paint Inspection");
-  if (document.getElementById('int-cb').checked)   tocItems.push("5.  Interiors Inspection");
+  // Build TOC as {label, anchor} pairs for hyperlink support (items 4 & 6)
+  const tocEntries = [];
+  tocEntries.push({ label: "1.  General Overview",                    anchor: "sec1" });
+  tocEntries.push({ label: "2.  Production Schedule & Milestones",    anchor: "sec2" });
+  tocEntries.push({ label: "3.  Change Orders",                       anchor: "sec3" });
+  const _paintOn = document.getElementById('paint-cb').checked;
+  const _intOn   = document.getElementById('int-cb').checked;
+  if (_paintOn) tocEntries.push({ label: "4.  Paint Inspection",      anchor: "sec4" });
+  if (_intOn)   tocEntries.push({ label: "5.  Interiors Inspection",  anchor: "sec5" });
   const _cols = parseInt(document.getElementById('media-cols').value);
   const _rows = parseInt(document.getElementById('media-rows').value);
   const _total = _cols * _rows;
-  const _hasMedia = Object.keys(mediaFiles).filter(k => k<_total && mediaFiles[k]).length > 0;
-  if (_hasMedia) tocItems.push("6.  Progress Media");
-  if (document.getElementById('bdm-cb').checked) tocItems.push("7.  Buyer's Decision Making");
-  if (document.getElementById('log-cb').checked) tocItems.push("8.  Construction Log");
+  const _hasMedia = Object.keys(mediaFiles).filter(k => k<_total && mediaFiles[k]).length > 0
+                 || Object.keys(videoFiles).filter(k => videoFiles[k]).length > 0;
+  if (_hasMedia) tocEntries.push({ label: "6.  Progress Media",       anchor: "sec6" });
+  const _bdmOn = document.getElementById('bdm-cb').checked;
+  const _logOn = document.getElementById('log-cb').checked;
+  if (_bdmOn) tocEntries.push({ label: "7.  Buyer's Decision Making", anchor: "sec7" });
+  if (_logOn) tocEntries.push({ label: "8.  Construction Log",        anchor: "sec8" });
 
   sections.push({
     ...buildSectionProps({ withFooter: true }),
     children: [
       sectionHeading("Table of Contents"),
       emptyPara(),
-      ...tocItems.map(item => para(item, { size:22, spacing:{before:80,after:80} })),
+      ...tocEntries.map(e => new Paragraph({
+        spacing: { before: 80, after: 80 },
+        children: [
+          new InternalHyperlink({
+            anchor: e.anchor,
+            children: [ new TextRun({ text: e.label, color: "2864A0", underline: {}, size: 22, font: "Calibri" }) ],
+          }),
+        ],
+      })),
     ],
   });
 
   // ══════════════════════════════════════════════════════════════════════════
-  //  SECTION 1 – EXECUTIVE SUMMARY
+  //  SECTION 1 – GENERAL OVERVIEW
   // ══════════════════════════════════════════════════════════════════════════
   const s1Children = [
-    sectionHeading("1. Executive Summary"),
+    sectionAnchor("sec1"),
+    sectionHeading("1. General Overview"),
     para(v('exec-summary')||'[Summary text]', { size:20, spacing:{before:120,after:80} }),
   ];
+
+  // Section navigation hyperlinks — auto-generated from active TOC entries (skip sec1 itself)
+  const navEntries = tocEntries.filter(e => e.anchor !== "sec1");
+  if (navEntries.length) {
+    s1Children.push(para("This report covers the following topics:", { bold:true, color:NAVY, size:20, spacing:{before:120,after:24} }));
+    navEntries.forEach(e => {
+      s1Children.push(new Paragraph({
+        spacing: { before: 24, after: 24 },
+        children: [
+          new InternalHyperlink({
+            anchor: e.anchor,
+            children: [ new TextRun({ text: "→  " + e.label.replace(/^\d+\.\s+/, ''), color: "2864A0", underline: {}, size: 20, font: "Calibri" }) ],
+          }),
+        ],
+      }));
+    });
+    s1Children.push(emptyPara());
+  }
+
+  // Crew notes (optional)
+  const crewNotes = v('crew-notes');
+  if (crewNotes && crewNotes.trim()) {
+    s1Children.push(para("Crew", { bold:true, color:NAVY, size:22, spacing:{before:80,after:24} }));
+    s1Children.push(para(crewNotes, { size:20, spacing:{before:24,after:80} }));
+  }
+
   if (v('last-visit')||v('next-visit')) {
     s1Children.push(emptyPara());
     s1Children.push(new Table({
@@ -35066,7 +35235,7 @@ async function generateDOCX() {
   // ══════════════════════════════════════════════════════════════════════════
   //  SECTION 2 – SCHEDULE
   // ══════════════════════════════════════════════════════════════════════════
-  const s2Children = [ sectionHeading("2. Production Schedule & Milestones") ];
+  const s2Children = [ sectionAnchor("sec2"), sectionHeading("2. Production Schedule & Milestones") ];
 
   if (ganttFile) {
     pb.textContent = 'Adding Gantt chart…';
@@ -35143,7 +35312,7 @@ async function generateDOCX() {
   // ══════════════════════════════════════════════════════════════════════════
   //  SECTION 3 – CHANGE ORDERS
   // ══════════════════════════════════════════════════════════════════════════
-  const s3Children = [ sectionHeading("3. Change Orders") ];
+  const s3Children = [ sectionAnchor("sec3"), sectionHeading("3. Change Orders") ];
   const coRows_dom = document.querySelectorAll('#co-body tr');
 
   if (coRows_dom.length) {
@@ -35232,7 +35401,7 @@ async function generateDOCX() {
   //  SECTION 4 – PAINT INSPECTION  (if applicable)
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('paint-cb').checked) {
-    const s4Children = [ sectionHeading("4. Paint Inspection") ];
+    const s4Children = [ sectionAnchor("sec4"), sectionHeading("4. Paint Inspection") ];
     const paintRows = [];
     if (paintSurveyor)       paintRows.push(namedRow("Surveyor", paintSurveyor));
     if (v('paint-date'))     paintRows.push(namedRow("Inspection date", v('paint-date')));
@@ -35276,7 +35445,7 @@ async function generateDOCX() {
   //  SECTION 5 – INTERIORS INSPECTION  (if applicable)
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('int-cb').checked) {
-    const s5Children = [ sectionHeading("5. Interiors Inspection") ];
+    const s5Children = [ sectionAnchor("sec5"), sectionHeading("5. Interiors Inspection") ];
     const intRows = [];
     if (intSurveyor)        intRows.push(namedRow("Surveyor", intSurveyor));
     if (v('int-date'))      intRows.push(namedRow("Inspection date", v('int-date')));
@@ -35322,64 +35491,130 @@ async function generateDOCX() {
   const cols = parseInt(document.getElementById('media-cols').value);
   const rows = parseInt(document.getElementById('media-rows').value);
   const total = cols * rows;
-  const hasMedia = Object.keys(mediaFiles).filter(k=>k<total && mediaFiles[k]).length > 0;
+  const hasPhotos = Object.keys(mediaFiles).filter(k=>k<total && mediaFiles[k]).length > 0;
+  const hasVideos = Object.keys(videoFiles).filter(k=>videoFiles[k]).length > 0;
+  const hasMedia  = hasPhotos || hasVideos;
 
   if (hasMedia) {
     pb.textContent = 'Embedding photos…';
-    const s6Children = [ sectionHeading("6. Progress Media") ];
-    // Each image at width = 170mm / cols
-    const imgWmm = 170 / cols;
-    const imgW = imgWmm / 25.4 * 914400; // EMU via inches
-    const imgH = Math.round(imgW * 0.72); // same ratio as PDF version
+    const s6Children = [ sectionAnchor("sec6"), sectionHeading("6. Progress Media") ];
 
-    for (let r=0; r<rows; r++) {
-      const rowCells = [];
-      for (let c=0; c<cols; c++) {
-        const idx = r*cols+c;
-        const cellChildren = [];
-        if (mediaFiles[idx]) {
-          const imgBytes = await fileToUint8(mediaFiles[idx].file);
-          const ext = mediaFiles[idx].file.name.split('.').pop().toLowerCase();
-          const imgType = ext==='jpg'||ext==='jpeg' ? 'jpg' : 'png';
-          cellChildren.push(new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing:{before:40,after:20},
-            children: [
-              new ImageRun({
-                type: imgType,
-                data: imgBytes,
-                transformation: { width: imgW/9525, height: imgH/9525 },
-              }),
-            ],
+    // ── Photos ──────────────────────────────────────────────────────────────
+    if (hasPhotos) {
+      const imgWmm = 170 / cols;
+      const imgW = imgWmm / 25.4 * 914400; // EMU via inches
+      const imgH = Math.round(imgW * 0.72);
+
+      for (let r=0; r<rows; r++) {
+        const rowCells = [];
+        for (let c=0; c<cols; c++) {
+          const idx = r*cols+c;
+          const cellChildren = [];
+          if (mediaFiles[idx]) {
+            const imgBytes = await fileToUint8(mediaFiles[idx].file);
+            const ext = mediaFiles[idx].file.name.split('.').pop().toLowerCase();
+            const imgType = ext==='jpg'||ext==='jpeg' ? 'jpg' : 'png';
+            cellChildren.push(new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing:{before:40,after:20},
+              children: [
+                new ImageRun({
+                  type: imgType,
+                  data: imgBytes,
+                  transformation: { width: imgW/9525, height: imgH/9525 },
+                }),
+              ],
+            }));
+          } else {
+            cellChildren.push(emptyPara());
+          }
+          const cap = document.getElementById('cap-'+idx);
+          if (cap && cap.value) {
+            cellChildren.push(para(cap.value, { color:GRAY, size:16, italic:true, align:AlignmentType.CENTER, spacing:{before:0,after:40} }));
+          }
+          rowCells.push(new TableCell({
+            width: { size: Math.floor(9500/cols), type: WidthType.DXA },
+            borders: noBorders,
+            margins:{top:40,bottom:40,left:80,right:80},
+            children: cellChildren,
           }));
-        } else {
-          cellChildren.push(emptyPara());
         }
-        const cap = document.getElementById('cap-'+idx);
-        if (cap && cap.value) {
-          cellChildren.push(para(cap.value, { color:GRAY, size:16, italic:true, align:AlignmentType.CENTER, spacing:{before:0,after:40} }));
-        }
-        rowCells.push(new TableCell({
-          width: { size: Math.floor(9500/cols), type: WidthType.DXA },
-          borders: noBorders,
-          margins:{top:40,bottom:40,left:80,right:80},
-          children: cellChildren,
+        s6Children.push(new Table({
+          width: { size:9500, type: WidthType.DXA },
+          columnWidths: Array(cols).fill(Math.floor(9500/cols)),
+          rows: [ new TableRow({ children: rowCells }) ],
         }));
       }
-      s6Children.push(new Table({
-        width: { size:9500, type: WidthType.DXA },
-        columnWidths: Array(cols).fill(Math.floor(9500/cols)),
-        rows: [ new TableRow({ children: rowCells }) ],
-      }));
     }
 
-    const videoLinks = v('video-links');
-    if (videoLinks) {
-      s6Children.push(emptyPara());
-      s6Children.push(para("Video Links:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:40} }));
-      videoLinks.split('\n').filter(l=>l.trim()).forEach(link=>{
-        s6Children.push(para(link.trim(), { size:18, color:"2864A0", spacing:{before:20,after:20} }));
+    // ── Videos ──────────────────────────────────────────────────────────────
+    if (hasVideos) {
+      pb.textContent = 'Embedding videos…';
+      s6Children.push(hasPhotos ? emptyPara() : new Paragraph({ spacing:{before:0,after:0} }));
+      s6Children.push(para("Videos", { bold:true, color:NAVY, size:22, spacing:{before:80,after:40} }));
+
+      // Build play-button icon PNG via canvas
+      const playIconBytes = await new Promise(resolve => {
+        const cvs = document.createElement('canvas');
+        cvs.width = 120; cvs.height = 120;
+        const ctx = cvs.getContext('2d');
+        ctx.fillStyle = '#1c3548';
+        ctx.beginPath(); ctx.arc(60, 60, 58, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.moveTo(42, 28); ctx.lineTo(42, 92); ctx.lineTo(96, 60); ctx.closePath(); ctx.fill();
+        cvs.toBlob(blob => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const b64 = reader.result.split(',')[1];
+            const bin = atob(b64);
+            const arr = new Uint8Array(bin.length);
+            for (let i=0; i<bin.length; i++) arr[i] = bin.charCodeAt(i);
+            resolve(arr);
+          };
+          reader.readAsDataURL(blob);
+        }, 'image/png');
       });
+
+      const videoKeys = Object.keys(videoFiles).filter(k=>videoFiles[k]).sort((a,b)=>a-b);
+      const vCols = Math.min(videoKeys.length, 4);
+      const vCellW = Math.floor(9500 / vCols);
+      const iconPx = 80; // icon display size in px (≈ 21mm)
+
+      // Group into rows of vCols
+      for (let r=0; r<Math.ceil(videoKeys.length/vCols); r++) {
+        const rowCells = [];
+        for (let c=0; c<vCols; c++) {
+          const ki = r*vCols + c;
+          const k  = videoKeys[ki];
+          const vf = k !== undefined ? videoFiles[k] : null;
+          const cellChildren = [];
+          if (vf) {
+            cellChildren.push(new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing:{before:40,after:12},
+              children: [
+                new ImageRun({ type:'png', data: playIconBytes, transformation:{ width:iconPx, height:iconPx } }),
+              ],
+            }));
+            // filename / caption as italic caption
+            const label = vf.caption || vf.name || '';
+            cellChildren.push(para(label, { color:GRAY, size:16, italic:true, align:AlignmentType.CENTER, spacing:{before:0,after:40} }));
+          } else {
+            cellChildren.push(emptyPara());
+          }
+          rowCells.push(new TableCell({
+            width: { size: vCellW, type: WidthType.DXA },
+            borders: noBorders,
+            margins:{top:40,bottom:40,left:80,right:80},
+            children: cellChildren,
+          }));
+        }
+        s6Children.push(new Table({
+          width: { size:9500, type: WidthType.DXA },
+          columnWidths: Array(vCols).fill(vCellW),
+          rows: [ new TableRow({ children: rowCells }) ],
+        }));
+      }
     }
 
     sections.push({
@@ -35392,7 +35627,7 @@ async function generateDOCX() {
   //  SECTION 7 – BUYER'S DECISION MAKING
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('bdm-cb').checked) {
-    const s7Children = [ sectionHeading("7. Buyer's Decision Making") ];
+    const s7Children = [ sectionAnchor("sec7"), sectionHeading("7. Buyer's Decision Making") ];
     const bdmRows_dom = document.querySelectorAll('#bdm-body tr');
 
     if (bdmRows_dom.length) {
@@ -35449,7 +35684,7 @@ async function generateDOCX() {
   //  SECTION 8 – CONSTRUCTION LOG
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('log-cb').checked) {
-    const s8Children = [ sectionHeading("8. Construction Log") ];
+    const s8Children = [ sectionAnchor("sec8"), sectionHeading("8. Construction Log") ];
     const logPreviewEl = document.getElementById('log-annex-preview');
     const logHtml = (logPreviewEl && logPreviewEl.style.display !== 'none') ? logPreviewEl.innerHTML.trim() : '';
     if (logHtml) {
@@ -35468,20 +35703,20 @@ async function generateDOCX() {
   //  BACK PAGE
   // ══════════════════════════════════════════════════════════════════════════
   // Grey page background (document-level D9D9D9). No navy rectangle.
-  //   • Top center:    colored NauticALL logo, 4" wide (proportional)
-  //   • Center:        "Our Other Services" image, 7" high (proportional), centered
+  //   • Top center:    colored NauticALL logo, 3" wide (proportional)
+  //   • Center:        "Our Other Services" image, 6" high (proportional), centered
   //   • Bottom center: "Learn more at www.nauticall.com"
   // Both images are placed as floating images positioned relative to the PAGE
   // so they sit exactly where requested regardless of text flow.
 
   // Colored logo bytes – 4" wide
   const backLogoBytes = b64toUint8(LOGO_COLOR_STACKED);
-  const backLogoW_px  = mm2emu(101.6) / 9525;                                  // 4 inch
+  const backLogoW_px  = mm2emu(76.2) / 9525;                                   // 3 inch
   const backLogoH_px  = backLogoW_px * (LOGO_COLOR_STACKED_DIMS.h / LOGO_COLOR_STACKED_DIMS.w);
 
   // Services image bytes – 7" high
   const svcBytes  = b64toUint8(OTHER_SERVICES_IMG);
-  const svcH_px   = mm2emu(177.8) / 9525;                                      // 7 inch
+  const svcH_px   = mm2emu(152.4) / 9525;                                      // 6 inch
   const svcW_px   = svcH_px * (OTHER_SERVICES_DIMS.w / OTHER_SERVICES_DIMS.h);
 
   const backCellChildren = [
@@ -35597,6 +35832,7 @@ async function generateDOCX() {
 
 
 rebuildMedia();
+rebuildVideos();
 addCO();
 addBDM();
 </script>
