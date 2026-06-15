@@ -35520,22 +35520,17 @@ async function generateDOCX() {
           const vf = k !== undefined ? videoFiles[k] : null;
           const cellChildren = [];
           if (vf) {
+            const label = vf.caption || '';
+            if (label) {
+              cellChildren.push(para(label, { color:GRAY, size:18, italic:true, align:AlignmentType.CENTER, spacing:{before:40,after:12} }));
+            }
             cellChildren.push(new Paragraph({
               alignment: AlignmentType.CENTER,
-              spacing:{before:40,after:12},
-              children: [
-                new ImageRun({ type:'png', data: playIconBytes, transformation:{ width:iconPx, height:iconPx } }),
-              ],
-            }));
-            const label = vf.caption || vf.name || '';
-            cellChildren.push(para(label, { color:GRAY, size:16, italic:true, align:AlignmentType.CENTER, spacing:{before:0,after:8} }));
-            cellChildren.push(new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing:{before:0,after:40},
+              spacing:{before: label ? 0 : 60, after:60},
               children: [
                 new ExternalHyperlink({
                   link: vf.link || vf.name || '',
-                  children: [ new TextRun({ text: '▶ Open video', color:'2864A0', underline:{}, size:18, font:'Calibri' }) ],
+                  children: [ new TextRun({ text: '▶  Open video', color:'2864A0', underline:{}, size:28, font:'Calibri', bold:true }) ],
                 }),
               ],
             }));
