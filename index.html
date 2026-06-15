@@ -33340,13 +33340,19 @@ window.docx = module.exports;
       <span class="chevron" id="ch-s1">&#8964;</span>
     </div>
     <div class="card-body" id="b-s1">
-      <div class="fl"><label>Summary</label><textarea id="exec-summary" rows="10">The vessel is progressing through the advanced outfitting phase, with the overall level of completion consistent with the Production Schedule. No significant concerns were identified during the attendance, and construction quality appeared good throughout all areas inspected.
+      <div class="fl"><label>Summary</label><textarea id="exec-summary" rows="10">The vessel is progressing through the [SPECIFY] phase, with the overall level of completion consistent with the Production Schedule. No significant concerns were identified during the attendance, and construction quality appeared good throughout all areas inspected.
 
-Final or near-final coating applications have been applied to the majority of external surfaces, with localised paint rectification ongoing in selected areas. Further details are available in the Paint Inspection section of this report.
+[Final or near-final coating applications have been applied to the majority of external surfaces, with localised paint rectification ongoing in selected areas.] Further details are available in the Paint Inspection section of this report.
 
-Interior outfitting has advanced considerably across all accommodation decks. Joinery installation is significantly progressed within the guest cabins, owner's suite and crew areas, with many spaces now exhibiting their final form. Remaining works are primarily associated with final detailing, lighting, AV integration and commissioning. Full details are provided in the Interiors Inspection section of this report.
+[Interior outfitting is advancing across the accommodation areas, with joinery installation, systems integration and finishing works progressing in line with the build programme.] Full details are provided in the Interiors Inspection section of this report.
 
-The engine room, tender garage and all technical spaces reflect a vessel progressing through the systems integration phase. Primary equipment, pipework, cable routing and ventilation are largely in place, with commissioning and operational verification ongoing.
+[All technical spaces and engineering areas reflect the vessel's current stage of construction, with installation and commissioning activities progressing accordingly.] Further details are available in the Construction Log section of this report.
+
+[A number of change orders have been reviewed and are being managed in accordance with the construction contract.] Details are provided in the Change Orders section of this report.
+
+[Outstanding decisions required from the Owner are being tracked and followed up as required.] Details are provided in the Buyer's Decision Making section of this report.
+
+A selection of progress photographs and video footage from the period is available in the Progress Media section of this report.
 
 Details on upcoming milestones and contractual schedule are provided in the Production Schedule &amp; Milestones section of this report.</textarea></div>
       <div class="applicable-row" style="margin-top:4px;margin-bottom:8px">
@@ -33373,7 +33379,7 @@ Details on upcoming milestones and contractual schedule are provided in the Prod
       <div class="fl">
         <label>Gantt Chart <span class="opt">(select multiple images if the schedule spans 2 pages)</span></label>
         <div class="gantt-zone" id="gantt-zone">
-          <input type="file" accept="image/*" multiple onchange="previewGantt(event)">
+          <input type="file" accept="image/*,.pdf" multiple onchange="previewGantt(event)">
           <svg width="28" height="28" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           <p>Click to upload — hold Shift/Cmd to select multiple pages</p>
         </div>
@@ -33936,15 +33942,53 @@ function removeAnnex(prefix){
 
 let ganttFiles = [];
 
-function previewGantt(e) {
-  const files = Array.from(e.target.files || []);
-  if (!files.length) return;
-  ganttFiles = files;
+async function previewGantt(e) {
+  const rawFiles = Array.from(e.target.files || []);
+  if (!rawFiles.length) return;
   const zone = document.getElementById('gantt-zone');
   const container = document.getElementById('gantt-previews');
   if (!zone || !container) return;
   zone.style.display = 'none';
   container.style.display = 'block';
+  container.innerHTML = '';
+  const statusDiv = document.createElement('div');
+  statusDiv.style.cssText = 'font-size:12px;color:#666;margin-bottom:8px';
+  statusDiv.textContent = 'Loading…';
+  container.appendChild(statusDiv);
+
+  // Expand PDF files into per-page Blobs using PDF.js
+  const expandedBlobs = [];
+  for (const f of rawFiles) {
+    if (f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')) {
+      try {
+        const buf = await f.arrayBuffer();
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        if (pdfjsLib) {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          const pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+          for (let pi = 1; pi <= pdfDoc.numPages; pi++) {
+            const page = await pdfDoc.getPage(pi);
+            const viewport = page.getViewport({ scale: 2.5 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+            await page.render({ canvasContext: ctx, viewport }).promise;
+            const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+            blob._ganttName = f.name + (pdfDoc.numPages > 1 ? ' – p' + pi : '');
+            expandedBlobs.push(blob);
+          }
+        }
+      } catch(err) {
+        console.error('Gantt PDF render error:', err);
+        expandedBlobs.push(f);
+      }
+    } else {
+      expandedBlobs.push(f);
+    }
+  }
+
+  ganttFiles = expandedBlobs;
   container.innerHTML = '';
   ganttFiles.forEach((f, i) => {
     const wrapper = document.createElement('div');
@@ -33955,7 +33999,7 @@ function previewGantt(e) {
     img.src = URL.createObjectURL(f);
     const lbl = document.createElement('div');
     lbl.style.cssText = 'font-size:11px;color:#999;margin-top:3px';
-    lbl.textContent = (ganttFiles.length > 1 ? 'Page ' + (i+1) + ': ' : '') + f.name;
+    lbl.textContent = (ganttFiles.length > 1 ? 'Page ' + (i+1) + ': ' : '') + (f._ganttName || f.name || '');
     wrapper.appendChild(img);
     wrapper.appendChild(lbl);
     container.appendChild(wrapper);
@@ -35258,6 +35302,7 @@ async function generateDOCX() {
   const s1Children = [
     sectionAnchor("sec1"),
     sectionHeading("1. General Overview"),
+    emptyPara(),
   ];
 
   // Render each summary paragraph with inline hyperlinks on section names
@@ -35293,7 +35338,7 @@ async function generateDOCX() {
   // ══════════════════════════════════════════════════════════════════════════
   //  SECTION 2 – SCHEDULE
   // ══════════════════════════════════════════════════════════════════════════
-  const s2Children = [ sectionAnchor("sec2"), sectionHeading("2. Production Schedule & Milestones") ];
+  const s2Children = [ sectionAnchor("sec2"), sectionHeading("2. Production Schedule & Milestones"), emptyPara() ];
 
   if (ganttFiles.length) {
     pb.textContent = 'Adding Gantt chart…';
@@ -35355,7 +35400,7 @@ async function generateDOCX() {
   // ══════════════════════════════════════════════════════════════════════════
   //  SECTION 3 – CHANGE ORDERS
   // ══════════════════════════════════════════════════════════════════════════
-  const s3Children = [ sectionAnchor("sec3"), sectionHeading("3. Change Orders") ];
+  const s3Children = [ sectionAnchor("sec3"), sectionHeading("3. Change Orders"), emptyPara() ];
   const coRows_dom = document.querySelectorAll('#co-body tr');
 
   if (coRows_dom.length) {
@@ -35444,7 +35489,7 @@ async function generateDOCX() {
   //  SECTION 4 – PAINT INSPECTION  (if applicable)
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('paint-cb').checked) {
-    const s4Children = [ sectionAnchor("sec4"), sectionHeading("4. Paint Inspection") ];
+    const s4Children = [ sectionAnchor("sec4"), sectionHeading("4. Paint Inspection"), emptyPara() ];
     const paintRows = [];
     if (paintSurveyor)       paintRows.push(namedRow("Surveyor", paintSurveyor));
     if (v('paint-date'))     paintRows.push(namedRow("Inspection date", v('paint-date')));
@@ -35488,7 +35533,7 @@ async function generateDOCX() {
   //  SECTION 5 – INTERIORS INSPECTION  (if applicable)
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('int-cb').checked) {
-    const s5Children = [ sectionAnchor("sec5"), sectionHeading("5. Interiors Inspection") ];
+    const s5Children = [ sectionAnchor("sec5"), sectionHeading("5. Interiors Inspection"), emptyPara() ];
     const intRows = [];
     if (intSurveyor)        intRows.push(namedRow("Surveyor", intSurveyor));
     if (v('int-date'))      intRows.push(namedRow("Inspection date", v('int-date')));
@@ -35540,7 +35585,7 @@ async function generateDOCX() {
 
   if (hasMedia) {
     pb.textContent = 'Embedding photos…';
-    const s6Children = [ sectionAnchor("sec6"), sectionHeading("6. Progress Media") ];
+    const s6Children = [ sectionAnchor("sec6"), sectionHeading("6. Progress Media"), emptyPara() ];
 
     // ── Photos ──────────────────────────────────────────────────────────────
     if (hasPhotos) {
@@ -35670,7 +35715,7 @@ async function generateDOCX() {
   //  SECTION 7 – BUYER'S DECISION MAKING
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('bdm-cb').checked) {
-    const s7Children = [ sectionAnchor("sec7"), sectionHeading("7. Buyer's Decision Making") ];
+    const s7Children = [ sectionAnchor("sec7"), sectionHeading("7. Buyer's Decision Making"), emptyPara() ];
     const bdmRows_dom = document.querySelectorAll('#bdm-body tr');
 
     if (bdmRows_dom.length) {
@@ -35727,7 +35772,7 @@ async function generateDOCX() {
   //  SECTION 8 – CONSTRUCTION LOG
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('log-cb').checked) {
-    const s8Children = [ sectionAnchor("sec8"), sectionHeading("8. Construction Log") ];
+    const s8Children = [ sectionAnchor("sec8"), sectionHeading("8. Construction Log"), emptyPara() ];
     const logPreviewEl = document.getElementById('log-annex-preview');
     const logHtml = (logPreviewEl && logPreviewEl.style.display !== 'none') ? logPreviewEl.innerHTML.trim() : '';
     if (logHtml) {
@@ -35815,11 +35860,11 @@ async function generateDOCX() {
         alignment: AlignmentType.CENTER,
         spacing: { before: 0, after: 0 },
         children: [
-          new TextRun({ text: "Learn more at ", color: NAVY.replace('#',''), size: 28, font: "Calibri" }),
+          new TextRun({ text: "Learn more at ", color: NAVY.replace('#',''), size: 34, font: "Calibri" }),
           new docx.ExternalHyperlink({
             link: "https://www.nauticall.com",
             children: [
-              new TextRun({ text: "www.nauticall.com", color: "2864A0", size: 28, font: "Calibri", underline: {} }),
+              new TextRun({ text: "www.nauticall.com", color: "2864A0", size: 34, font: "Calibri", underline: {} }),
             ],
           }),
         ],
