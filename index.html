@@ -34835,13 +34835,13 @@ async function generateDOCX() {
           borders: thinBorders,
           shading: { fill: "EBF0F4", type: ShadingType.CLEAR },
           margins: { top: 60, bottom: 60, left: 120, right: 120 },
-          children: [ para(label, { bold:true, color:NAVY, size:18 }) ],
+          children: [ para(label, { bold:true, color:NAVY, size:24 }) ],
         }),
         new TableCell({
           width: { size: 6500, type: WidthType.DXA },
           borders: thinBorders,
           margins: { top: 60, bottom: 60, left: 120, right: 120 },
-          children: [ para(value||'—', { size:18 }) ],
+          children: [ para(value||'—', { size:24 }) ],
         }),
       ],
     });
@@ -34955,14 +34955,14 @@ async function generateDOCX() {
                     alignment: AlignmentType.RIGHT,
                     spacing: { before: 0, after: 0 },
                     children: [
-                      new TextRun({ text: reportLabel || "New Build Management Report", color: NAVY, size: 20, font: "Calibri", bold: true }),
+                      new TextRun({ text: reportLabel || "New Build Management Report", color: NAVY, size: 18, font: "Calibri", bold: true }),
                     ],
                   }),
                   new Paragraph({
                     alignment: AlignmentType.RIGHT,
                     spacing: { before: 40, after: 0 },
                     children: [
-                      new TextRun({ children: ["Page ", docx.PageNumber.CURRENT, " / ", docx.PageNumber.TOTAL_PAGES], color: "5B7E95", size: 20, font: "Calibri" }),
+                      new TextRun({ children: ["Page ", docx.PageNumber.CURRENT, " / ", docx.PageNumber.TOTAL_PAGES], color: "5B7E95", size: 18, font: "Calibri" }),
                     ],
                   }),
                 ],
@@ -35385,7 +35385,7 @@ async function generateDOCX() {
       s2Children.push(emptyPara());
       const _schedParas = (v('schedule-text')||'').split(/\n\n+/).map(t=>t.trim()).filter(Boolean);
       _schedParas.forEach((_sp, _si) => {
-        s2Children.push(para(_sp, { size:20, spacing:{before:0,after:0} }));
+        s2Children.push(para(_sp, { size:24, spacing:{before:0,after:0} }));
         if (_si === 0) { s2Children.push(emptyPara()); s2Children.push(emptyPara()); }
       });
   }
@@ -35522,7 +35522,17 @@ async function generateDOCX() {
               ],
             }));
             const label = vf.caption || vf.name || '';
-            cellChildren.push(para(label, { color:GRAY, size:16, italic:true, align:AlignmentType.CENTER, spacing:{before:0,after:40} }));
+            cellChildren.push(para(label, { color:GRAY, size:16, italic:true, align:AlignmentType.CENTER, spacing:{before:0,after:8} }));
+            cellChildren.push(new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing:{before:0,after:40},
+              children: [
+                new ExternalHyperlink({
+                  link: vf.name || '',
+                  children: [ new TextRun({ text: '▶ Open video', color:'2864A0', underline:{}, size:18, font:'Calibri' }) ],
+                }),
+              ],
+            }));
           } else {
             cellChildren.push(emptyPara());
           }
@@ -35557,7 +35567,7 @@ async function generateDOCX() {
     if (logHtml) {
       s8Children.push(...(await htmlToDocxChildren(logHtml)));
     } else {
-      s8Children.push(para(v('construction-log')||'[No content pasted]', { size:20, spacing:{before:120,after:80} }));
+      s8Children.push(para(v('construction-log')||'[No content pasted]', { size:24, spacing:{before:120,after:80} }));
     }
 
     sections.push({
@@ -35588,8 +35598,8 @@ async function generateDOCX() {
 
     if (v('paint-findings')) {
       s4Children.push(emptyPara());
-      s4Children.push(para("Findings & open items:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
-      s4Children.push(para(v('paint-findings'), { size:20, spacing:{before:0,after:80} }));
+      s4Children.push(para("Findings & open items:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
+      s4Children.push(para(v('paint-findings'), { size:24, spacing:{before:0,after:80} }));
     }
 
     const paintPreviewEl = document.getElementById('paint-annex-preview');
@@ -35597,12 +35607,12 @@ async function generateDOCX() {
     const paintAnnex = document.getElementById('paint-annex-text')?.value||'';
     if (paintAnnexHtml) {
       s4Children.push(emptyPara());
-      s4Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
+      s4Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
       s4Children.push(...(await htmlToDocxChildren(paintAnnexHtml)));
     } else if (paintAnnex) {
       s4Children.push(emptyPara());
-      s4Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
-      s4Children.push(para(paintAnnex, { size:19, spacing:{before:0,after:80} }));
+      s4Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
+      s4Children.push(para(paintAnnex, { size:24, spacing:{before:0,after:80} }));
     }
 
     sections.push({
@@ -35632,8 +35642,8 @@ async function generateDOCX() {
 
     if (v('int-findings')) {
       s5Children.push(emptyPara());
-      s5Children.push(para("Findings & open items:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
-      s5Children.push(para(v('int-findings'), { size:20, spacing:{before:0,after:80} }));
+      s5Children.push(para("Findings & open items:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
+      s5Children.push(para(v('int-findings'), { size:24, spacing:{before:0,after:80} }));
     }
 
     const intPreviewEl = document.getElementById('int-annex-preview');
@@ -35641,12 +35651,12 @@ async function generateDOCX() {
     const intAnnex = document.getElementById('int-annex-text')?.value||'';
     if (intAnnexHtml) {
       s5Children.push(emptyPara());
-      s5Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
+      s5Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
       s5Children.push(...(await htmlToDocxChildren(intAnnexHtml)));
     } else if (intAnnex) {
       s5Children.push(emptyPara());
-      s5Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
-      s5Children.push(para(intAnnex, { size:19, spacing:{before:0,after:80} }));
+      s5Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
+      s5Children.push(para(intAnnex, { size:24, spacing:{before:0,after:80} }));
     }
 
     sections.push({
@@ -35668,7 +35678,7 @@ async function generateDOCX() {
         shading: { fill: NAVY, type: ShadingType.CLEAR },
         margins: { top:60, bottom:60, left:120, right:120 },
         borders: thinBorders,
-        children: [ para(h, { bold:true, color:WHITE, size:18 }) ],
+        children: [ para(h, { bold:true, color:WHITE, size:24 }) ],
       })),
     });
 
@@ -35688,28 +35698,28 @@ async function generateDOCX() {
             shading: { fill:bg, type: ShadingType.CLEAR },
             margins:{top:60,bottom:60,left:120,right:120},
             borders: thinBorders,
-            children:[ para(num, {size:18}) ],
+            children:[ para(num, {size:24}) ],
           }),
           new TableCell({
             width: { size:5500, type: WidthType.DXA },
             shading: { fill:bg, type: ShadingType.CLEAR },
             margins:{top:60,bottom:60,left:120,right:120},
             borders: thinBorders,
-            children:[ para(desc, {size:18}) ],
+            children:[ para(desc, {size:24}) ],
           }),
           new TableCell({
             width: { size:1700, type: WidthType.DXA },
             shading: { fill:bg, type: ShadingType.CLEAR },
             margins:{top:60,bottom:60,left:120,right:120},
             borders: thinBorders,
-            children:[ para(currency+fmtMoney(amt), {size:18}) ],
+            children:[ para(currency+fmtMoney(amt), {size:24}) ],
           }),
           new TableCell({
             width: { size:1800, type: WidthType.DXA },
             shading: { fill:bg, type: ShadingType.CLEAR },
             margins:{top:60,bottom:60,left:120,right:120},
             borders: thinBorders,
-            children:[ para(st.charAt(0).toUpperCase()+st.slice(1), {size:18,color:stColor,bold:true}) ],
+            children:[ para(st.charAt(0).toUpperCase()+st.slice(1), {size:24,color:stColor,bold:true}) ],
           }),
         ],
       });
@@ -35735,7 +35745,7 @@ async function generateDOCX() {
 
   if (v('co-notes')) {
     s3Children.push(emptyPara());
-    s3Children.push(para(v('co-notes'), { italic:true, size:20, spacing:{before:80,after:80} }));
+    s3Children.push(para(v('co-notes'), { italic:true, size:24, spacing:{before:80,after:80} }));
   }
 
   sections.push({
@@ -35753,7 +35763,7 @@ async function generateDOCX() {
     if (bdmRows_dom.length) {
       s7Children.push(para(
         "The following decisions remain outstanding by the Buyer according to the Construction Contract:",
-        { size:20, spacing:{before:120,after:80} }
+        { size:24, spacing:{before:120,after:80} }
       ));
 
       const bdmHeaderRow = new TableRow({
@@ -35762,7 +35772,7 @@ async function generateDOCX() {
           shading:{fill:NAVY,type:ShadingType.CLEAR},
           margins:{top:60,bottom:60,left:120,right:120},
           borders:thinBorders,
-          children:[para(h,{bold:true,color:WHITE,size:18})],
+          children:[para(h,{bold:true,color:WHITE,size:24})],
         })),
       });
 
@@ -35774,10 +35784,10 @@ async function generateDOCX() {
         const bg   = i%2===0 ? "F8F9FB" : "FFFFFF";
         return new TableRow({
           children:[
-            new TableCell({width:{size:400,type:WidthType.DXA},shading:{fill:bg,type:ShadingType.CLEAR},margins:{top:60,bottom:60,left:120,right:120},borders:thinBorders,children:[para(String(i+1),{size:18})]}),
-            new TableCell({width:{size:5400,type:WidthType.DXA},shading:{fill:bg,type:ShadingType.CLEAR},margins:{top:60,bottom:60,left:120,right:120},borders:thinBorders,children:[para(desc,{size:18})]}),
-            new TableCell({width:{size:2000,type:WidthType.DXA},shading:{fill:bg,type:ShadingType.CLEAR},margins:{top:60,bottom:60,left:120,right:120},borders:thinBorders,children:[para(due,{size:18})]}),
-            new TableCell({width:{size:1700,type:WidthType.DXA},shading:{fill:bg,type:ShadingType.CLEAR},margins:{top:60,bottom:60,left:120,right:120},borders:thinBorders,children:[para(pri,{size:18})]}),
+            new TableCell({width:{size:400,type:WidthType.DXA},shading:{fill:bg,type:ShadingType.CLEAR},margins:{top:60,bottom:60,left:120,right:120},borders:thinBorders,children:[para(String(i+1),{size:24})]}),
+            new TableCell({width:{size:5400,type:WidthType.DXA},shading:{fill:bg,type:ShadingType.CLEAR},margins:{top:60,bottom:60,left:120,right:120},borders:thinBorders,children:[para(desc,{size:24})]}),
+            new TableCell({width:{size:2000,type:WidthType.DXA},shading:{fill:bg,type:ShadingType.CLEAR},margins:{top:60,bottom:60,left:120,right:120},borders:thinBorders,children:[para(due,{size:24})]}),
+            new TableCell({width:{size:1700,type:WidthType.DXA},shading:{fill:bg,type:ShadingType.CLEAR},margins:{top:60,bottom:60,left:120,right:120},borders:thinBorders,children:[para(pri,{size:24})]}),
           ],
         });
       });
@@ -35791,7 +35801,7 @@ async function generateDOCX() {
 
     if (v('bdm-notes')) {
       s7Children.push(emptyPara());
-      s7Children.push(para(v('bdm-notes'),{italic:true,size:20,spacing:{before:80,after:80}}));
+      s7Children.push(para(v('bdm-notes'),{italic:true,size:24,spacing:{before:80,after:80}}));
     }
 
     sections.push({
