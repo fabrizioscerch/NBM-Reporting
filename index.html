@@ -34955,14 +34955,14 @@ async function generateDOCX() {
                     alignment: AlignmentType.RIGHT,
                     spacing: { before: 0, after: 0 },
                     children: [
-                      new TextRun({ text: reportLabel || "New Build Management Report", color: NAVY, size: 16, font: "Calibri", bold: true }),
+                      new TextRun({ text: reportLabel || "New Build Management Report", color: NAVY, size: 20, font: "Calibri", bold: true }),
                     ],
                   }),
                   new Paragraph({
                     alignment: AlignmentType.RIGHT,
                     spacing: { before: 40, after: 0 },
                     children: [
-                      new TextRun({ children: ["Page ", docx.PageNumber.CURRENT, " / ", docx.PageNumber.TOTAL_PAGES], color: "5B7E95", size: 14, font: "Calibri" }),
+                      new TextRun({ children: ["Page ", docx.PageNumber.CURRENT, " / ", docx.PageNumber.TOTAL_PAGES], color: "5B7E95", size: 20, font: "Calibri" }),
                     ],
                   }),
                 ],
@@ -35256,11 +35256,11 @@ async function generateDOCX() {
       sectionHeading("Table of Contents"),
       emptyPara(),
       ...tocEntries.map(e => new Paragraph({
-        spacing: { before: 80, after: 80 },
+        spacing: { before: 80, after: 80, line: 360, lineRule: "auto" },
         children: [
           new InternalHyperlink({
             anchor: e.anchor,
-            children: [ new TextRun({ text: e.label, color: "2864A0", underline: {}, size: 22, font: "Calibri" }) ],
+            children: [ new TextRun({ text: e.label, color: "2864A0", underline: {}, size: 24, font: "Calibri" }) ],
           }),
         ],
       })),
@@ -35310,19 +35310,19 @@ async function generateDOCX() {
   ];
 
   // Render each summary paragraph with inline hyperlinks on section names
-  s1Children.push(para("[STANDARD TEXT — TO BE CUSTOMIZED]", { size:20, bold:true, spacing:{before:0,after:0} }));
+  s1Children.push(para("[STANDARD TEXT — TO BE CUSTOMIZED]", { size:24, bold:true, spacing:{before:0,after:0} }));
   s1Children.push(emptyPara());
   s1Children.push(emptyPara());
   const summaryRaw = v('exec-summary') || 'The vessel is progressing satisfactorily.';
   summaryRaw.split(/\n\n+/).map(t => t.trim()).filter(Boolean).forEach(t => {
-    s1Children.push(buildLinkedPara(t, { size:20, spacing:{before:60,after:60} }));
+    s1Children.push(buildLinkedPara(t, { size:24, spacing:{before:60,after:60} }));
   });
 
   // Crew notes — inline, right after the summary paragraphs (only if checkbox ticked)
   const crewNotes = v('crew-notes');
   const crewIncluded = document.getElementById('crew-cb') && document.getElementById('crew-cb').checked;
   if (crewIncluded && crewNotes && crewNotes.trim()) {
-    s1Children.push(buildLinkedPara(crewNotes, { size:20, spacing:{before:60,after:60} }));
+    s1Children.push(buildLinkedPara(crewNotes, { size:24, spacing:{before:60,after:60} }));
   }
 
   if (v('last-visit')||v('next-visit')) {
@@ -35514,58 +35514,11 @@ async function generateDOCX() {
           const vf = k !== undefined ? videoFiles[k] : null;
           const cellChildren = [];
           if (vf) {
-            // Capture first video frame as thumbnail; fall back to generic play icon
-            let thumbBytes = null, thumbW = iconPx, thumbH = iconPx;
-            if (vf.file) {
-              const _vurl = URL.createObjectURL(vf.file);
-              thumbBytes = await new Promise(res => {
-                const _vid = document.createElement('video');
-                _vid.muted = true; _vid.preload = 'metadata';
-                _vid.src = _vurl;
-                const _capture = () => {
-                  const _vc = document.createElement('canvas');
-                  const _asp = _vid.videoHeight && _vid.videoWidth ? _vid.videoHeight / _vid.videoWidth : 9/16;
-                  _vc.width = 240; _vc.height = Math.max(1, Math.round(240 * _asp));
-                  const _vctx = _vc.getContext('2d');
-                  _vctx.drawImage(_vid, 0, 0, _vc.width, _vc.height);
-                  // Play button overlay
-                  const _cx = _vc.width/2, _cy = _vc.height/2, _r = Math.min(_cx,_cy)*0.32;
-                  _vctx.fillStyle = 'rgba(0,0,0,0.48)';
-                  _vctx.beginPath(); _vctx.arc(_cx,_cy,_r,0,Math.PI*2); _vctx.fill();
-                  _vctx.fillStyle = '#ffffff';
-                  const _ps = _r*0.55;
-                  _vctx.beginPath();
-                  _vctx.moveTo(_cx-_ps*0.38,_cy-_ps*0.72);
-                  _vctx.lineTo(_cx-_ps*0.38,_cy+_ps*0.72);
-                  _vctx.lineTo(_cx+_ps*0.78,_cy);
-                  _vctx.closePath(); _vctx.fill();
-                  _vc.toBlob(blob => {
-                    const _rd = new FileReader();
-                    _rd.onloadend = () => {
-                      URL.revokeObjectURL(_vurl);
-                      const _b64 = _rd.result.split(',')[1];
-                      const _bin = atob(_b64); const _arr = new Uint8Array(_bin.length);
-                      for(let _i=0;_i<_bin.length;_i++) _arr[_i]=_bin.charCodeAt(_i);
-                      thumbW = _vc.width; thumbH = _vc.height;
-                      res(_arr);
-                    };
-                    _rd.readAsDataURL(blob);
-                  }, 'image/png');
-                };
-                _vid.addEventListener('seeked', _capture, {once:true});
-                _vid.addEventListener('loadeddata', () => { _vid.currentTime = 0.5; }, {once:true});
-                _vid.addEventListener('error', () => { URL.revokeObjectURL(_vurl); res(null); }, {once:true});
-                _vid.load();
-              }).catch(() => null);
-            }
-            const _imgData = thumbBytes || playIconBytes;
-            const _imgW    = thumbBytes ? thumbW : iconPx;
-            const _imgH    = thumbBytes ? thumbH : iconPx;
             cellChildren.push(new Paragraph({
               alignment: AlignmentType.CENTER,
               spacing:{before:40,after:12},
               children: [
-                new ImageRun({ type:'png', data: _imgData, transformation:{ width:_imgW, height:_imgH } }),
+                new ImageRun({ type:'png', data: playIconBytes, transformation:{ width:iconPx, height:iconPx } }),
               ],
             }));
             const label = vf.caption || vf.name || '';
