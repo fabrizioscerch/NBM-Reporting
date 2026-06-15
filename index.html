@@ -33340,14 +33340,22 @@ window.docx = module.exports;
       <span class="chevron" id="ch-s1">&#8964;</span>
     </div>
     <div class="card-body" id="b-s1">
-      <div class="fl"><label>Summary</label><textarea id="exec-summary" rows="9">During the month of [Month], the shipyard made great progress with [describe main activity].
+      <div class="fl"><label>Summary</label><textarea id="exec-summary" rows="10">The vessel is progressing through the advanced outfitting phase, with the overall level of completion consistent with the Production Schedule. No significant concerns were identified during the attendance, and construction quality appeared good throughout all areas inspected.
 
-NauticALL has been actively engaged on behalf of the owner, monitoring construction quality, schedule adherence and contractual milestones to ensure the owner's interests are fully protected at every stage.
+Final or near-final coating applications have been applied to the majority of external surfaces, with localised paint rectification ongoing in selected areas. Further details are available in the Paint Inspection section of this report.
 
-This report covers the following topics: Production Schedule &amp; Milestones, Change Orders, Paint Inspection, Interiors Inspection, Progress Media, Buyer's Decision Making and Construction Log. Each section can be accessed directly by clicking on the corresponding link in the table of contents or within this overview.
+Interior outfitting has advanced considerably across all accommodation decks. Joinery installation is significantly progressed within the guest cabins, owner's suite and crew areas, with many spaces now exhibiting their final form. Remaining works are primarily associated with final detailing, lighting, AV integration and commissioning. Full details are provided in the Interiors Inspection section of this report.
 
-The last attendance was on [date] and the next visit is planned on [date].</textarea></div>
-      <div class="fl"><label>Crew <span class="opt">(optional — complete only if crew joined onboard this month)</span></label><textarea id="crew-notes" rows="4">[If applicable] During the month of [Month], [Crew Member Name] joined the vessel onboard as [Position/Role]. NauticALL was available to assist and coordinate as needed to ensure a smooth integration of the crew during this phase of the build.</textarea></div>
+The engine room, tender garage and all technical spaces reflect a vessel progressing through the systems integration phase. Primary equipment, pipework, cable routing and ventilation are largely in place, with commissioning and operational verification ongoing.
+
+Details on upcoming milestones and contractual schedule are provided in the Production Schedule &amp; Milestones section of this report.</textarea></div>
+      <div class="applicable-row" style="margin-top:4px;margin-bottom:8px">
+        <input type="checkbox" id="crew-cb" onchange="document.getElementById('crew-fields').classList.toggle('disabled',!this.checked)">
+        <label for="crew-cb" style="font-size:13px;font-weight:500;color:#444">Include crew notes in this overview</label>
+      </div>
+      <div class="fields-wrap disabled" id="crew-fields">
+        <div class="fl"><label>Crew <span class="opt">(complete only if crew joined onboard this month)</span></label><textarea id="crew-notes" rows="4">[If applicable] During the month of [Month], [Crew Member Name] joined the vessel onboard as [Position/Role]. NauticALL was available to assist and coordinate as needed to ensure a smooth integration of the crew during this phase of the build.</textarea></div>
+      </div>
       <div class="g2">
         <div class="fl"><label>Last Site Visit</label><input type="date" id="last-visit"></div>
         <div class="fl"><label>Next Site Visit Planned</label><input type="date" id="next-visit"></div>
@@ -33363,13 +33371,13 @@ The last attendance was on [date] and the next visit is planned on [date].</text
     </div>
     <div class="card-body" id="b-s2">
       <div class="fl">
-        <label>Gantt Chart <span class="opt">(upload image from yard)</span></label>
+        <label>Gantt Chart <span class="opt">(select multiple images if the schedule spans 2 pages)</span></label>
         <div class="gantt-zone" id="gantt-zone">
-          <input type="file" accept="image/*" onchange="previewGantt(event)">
+          <input type="file" accept="image/*" multiple onchange="previewGantt(event)">
           <svg width="28" height="28" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <p>Click to upload Gantt chart from yard</p>
+          <p>Click to upload — hold Shift/Cmd to select multiple pages</p>
         </div>
-        <img id="gantt-preview" class="gantt-preview">
+        <div id="gantt-previews" style="display:none;margin-bottom:12px"></div>
       </div>
       <div class="fl"><label>Schedule Narrative</label><textarea id="schedule-text" rows="5">[STANDARD TEXT — TO BE CUSTOMIZED]
 
@@ -33926,15 +33934,46 @@ function removeAnnex(prefix){
   if(removeBtn) removeBtn.style.display = 'none';
 }
 
-function previewGantt(e){
-  const f=e.target.files[0]; if(!f) return;
-  const preview=document.getElementById('gantt-preview');
-  preview.src=URL.createObjectURL(f);
-  preview.style.display='block';
-  document.getElementById('gantt-zone').style.display='none';
-  ganttFile=f;
+let ganttFiles = [];
+
+function previewGantt(e) {
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+  ganttFiles = files;
+  const zone = document.getElementById('gantt-zone');
+  const container = document.getElementById('gantt-previews');
+  if (!zone || !container) return;
+  zone.style.display = 'none';
+  container.style.display = 'block';
+  container.innerHTML = '';
+  ganttFiles.forEach((f, i) => {
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'margin-bottom:8px';
+    const img = document.createElement('img');
+    img.className = 'gantt-preview';
+    img.style.cssText = 'display:block;max-width:100%;border-radius:8px';
+    img.src = URL.createObjectURL(f);
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'font-size:11px;color:#999;margin-top:3px';
+    lbl.textContent = (ganttFiles.length > 1 ? 'Page ' + (i+1) + ': ' : '') + f.name;
+    wrapper.appendChild(img);
+    wrapper.appendChild(lbl);
+    container.appendChild(wrapper);
+  });
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.textContent = '✕ Remove';
+  removeBtn.style.cssText = 'margin-top:6px;background:#f5f5f5;border:1px solid #d0d2d6;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;color:#666;font-family:inherit';
+  removeBtn.onclick = () => {
+    ganttFiles = [];
+    container.style.display = 'none';
+    container.innerHTML = '';
+    zone.style.display = '';
+    const inp = zone.querySelector('input[type=file]');
+    if (inp) inp.value = '';
+  };
+  container.appendChild(removeBtn);
 }
-let ganttFile=null;
 
 function v(id){return (document.getElementById(id)||{}).value||'';}
 
@@ -34082,13 +34121,13 @@ async function saveDraft() {
     }
   }
 
-  // Gantt
-  if (typeof ganttFile !== 'undefined' && ganttFile) {
-    draft.gantt = {
-      name: ganttFile.name,
-      type: ganttFile.type,
-      data: await _fileToBase64(ganttFile),
-    };
+  // Gantt (one or more pages saved as array)
+  if (ganttFiles.length) {
+    draft.gantt = await Promise.all(ganttFiles.map(async f => ({
+      name: f.name,
+      type: f.type,
+      data: await _fileToBase64(f),
+    })));
   }
 
   // Annex previews (paint, int, log). The HTML preview already contains
@@ -34240,15 +34279,14 @@ async function loadDraft(event) {
       }
     }, 50);
 
-    // Restore Gantt
+    // Restore Gantt (handles both old single-object and new array formats)
     if (draft.gantt) {
-      const blob = _base64ToBlob(draft.gantt.data, draft.gantt.type);
-      const f = new File([blob], draft.gantt.name, { type: draft.gantt.type });
-      ganttFile = f;
-      const preview = document.getElementById('gantt-preview');
-      const zone    = document.getElementById('gantt-zone');
-      if (preview) { preview.src = URL.createObjectURL(f); preview.style.display = 'block'; }
-      if (zone)    { zone.style.display = 'none'; }
+      const arr = Array.isArray(draft.gantt) ? draft.gantt : [draft.gantt];
+      ganttFiles = arr.map(g => {
+        const blob = _base64ToBlob(g.data, g.type);
+        return new File([blob], g.name, { type: g.type });
+      });
+      previewGantt({ target: { files: ganttFiles } });
     }
 
     // Restore annexes (paint, int, log)
@@ -35184,35 +35222,55 @@ async function generateDOCX() {
   // ══════════════════════════════════════════════════════════════════════════
   //  SECTION 1 – GENERAL OVERVIEW
   // ══════════════════════════════════════════════════════════════════════════
+
+  // Converts a plain-text paragraph into a Paragraph with inline InternalHyperlinks
+  // for any section name found in the text (longest match first to avoid partial matches).
+  function buildLinkedPara(text, opts={}) {
+    const { size=20, spacing={before:60,after:60} } = opts;
+    const linkMap = [
+      { phrase: "Production Schedule & Milestones",  anchor: "sec2" },
+      { phrase: "Production Schedule",               anchor: "sec2" },
+      { phrase: "Change Orders",                     anchor: "sec3" },
+      { phrase: "Paint Inspection",                  anchor: "sec4" },
+      { phrase: "Interiors Inspection",              anchor: "sec5" },
+      { phrase: "Progress Media",                    anchor: "sec6" },
+      { phrase: "Buyer's Decision Making",           anchor: "sec7" },
+      { phrase: "Construction Log",                  anchor: "sec8" },
+    ];
+    // Build regex — longest phrases first so "Production Schedule & Milestones"
+    // matches before the shorter "Production Schedule"
+    const escaped = linkMap.map(l => l.phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const regex = new RegExp('(' + escaped.join('|') + ')', 'g');
+    const parts = text.split(regex);
+    const children = parts.filter(p => p).map(part => {
+      const link = linkMap.find(l => l.phrase === part);
+      if (link) {
+        return new InternalHyperlink({
+          anchor: link.anchor,
+          children: [ new TextRun({ text: part, color: "2864A0", underline: {}, size, font: "Calibri" }) ],
+        });
+      }
+      return new TextRun({ text: part, size, font: "Calibri", color: "1a1a2e" });
+    });
+    return new Paragraph({ spacing, children });
+  }
+
   const s1Children = [
     sectionAnchor("sec1"),
     sectionHeading("1. General Overview"),
-    para(v('exec-summary')||'[Summary text]', { size:20, spacing:{before:120,after:80} }),
   ];
 
-  // Section navigation hyperlinks — auto-generated from active TOC entries (skip sec1 itself)
-  const navEntries = tocEntries.filter(e => e.anchor !== "sec1");
-  if (navEntries.length) {
-    s1Children.push(para("This report covers the following topics:", { bold:true, color:NAVY, size:20, spacing:{before:120,after:24} }));
-    navEntries.forEach(e => {
-      s1Children.push(new Paragraph({
-        spacing: { before: 24, after: 24 },
-        children: [
-          new InternalHyperlink({
-            anchor: e.anchor,
-            children: [ new TextRun({ text: "→  " + e.label.replace(/^\d+\.\s+/, ''), color: "2864A0", underline: {}, size: 20, font: "Calibri" }) ],
-          }),
-        ],
-      }));
-    });
-    s1Children.push(emptyPara());
-  }
+  // Render each summary paragraph with inline hyperlinks on section names
+  const summaryRaw = v('exec-summary') || 'The vessel is progressing satisfactorily.';
+  summaryRaw.split(/\n\n+/).map(t => t.trim()).filter(Boolean).forEach(t => {
+    s1Children.push(buildLinkedPara(t, { size:20, spacing:{before:60,after:60} }));
+  });
 
-  // Crew notes (optional)
+  // Crew notes — inline, right after the summary paragraphs (only if checkbox ticked)
   const crewNotes = v('crew-notes');
-  if (crewNotes && crewNotes.trim()) {
-    s1Children.push(para("Crew", { bold:true, color:NAVY, size:22, spacing:{before:80,after:24} }));
-    s1Children.push(para(crewNotes, { size:20, spacing:{before:24,after:80} }));
+  const crewIncluded = document.getElementById('crew-cb') && document.getElementById('crew-cb').checked;
+  if (crewIncluded && crewNotes && crewNotes.trim()) {
+    s1Children.push(buildLinkedPara(crewNotes, { size:20, spacing:{before:60,after:60} }));
   }
 
   if (v('last-visit')||v('next-visit')) {
@@ -35237,56 +35295,41 @@ async function generateDOCX() {
   // ══════════════════════════════════════════════════════════════════════════
   const s2Children = [ sectionAnchor("sec2"), sectionHeading("2. Production Schedule & Milestones") ];
 
-  if (ganttFile) {
+  if (ganttFiles.length) {
     pb.textContent = 'Adding Gantt chart…';
-    // Load image into an <img>, then draw to a canvas to bake in any EXIF rotation
-    // and strip the EXIF metadata. docx.js embeds raw bytes without honoring EXIF,
-    // so we need the canvas bytes (which are post-rotation) for correct display.
-    const ganttImgEl = await new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload  = () => resolve(img);
-      img.onerror = reject;
-      img.src = URL.createObjectURL(ganttFile);
-    }).catch(() => null);
-
-    if (ganttImgEl) {
-      const cvs = document.createElement('canvas');
-      cvs.width  = ganttImgEl.naturalWidth;
-      cvs.height = ganttImgEl.naturalHeight;
-      const cctx = cvs.getContext('2d');
-      cctx.drawImage(ganttImgEl, 0, 0);
-      const dataUrl = cvs.toDataURL('image/png');
-      const b64 = dataUrl.split(',')[1];
-      const bin = atob(b64);
-      const ganttBytes = new Uint8Array(bin.length);
-      for (let i=0; i<bin.length; i++) ganttBytes[i] = bin.charCodeAt(i);
-
-      // Target width = content width (~170mm at 96dpi ≈ 640px). Preserve aspect ratio.
-      const targetWpx = 640;
-      let ganttW = targetWpx;
-      let ganttH = Math.round(targetWpx * (cvs.height / cvs.width));
-      // If the image is much taller than the page, cap by height
-      const maxHpx = 900; // ~A4 content height
-      if (ganttH > maxHpx) {
-        ganttW = Math.round(ganttW * maxHpx / ganttH);
-        ganttH = maxHpx;
+    for (let _gi = 0; _gi < ganttFiles.length; _gi++) {
+      const _gf = ganttFiles[_gi];
+      const ganttImgEl = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload  = () => resolve(img);
+        img.onerror = reject;
+        img.src = URL.createObjectURL(_gf);
+      }).catch(() => null);
+      if (ganttImgEl) {
+        const cvs = document.createElement('canvas');
+        cvs.width  = ganttImgEl.naturalWidth;
+        cvs.height = ganttImgEl.naturalHeight;
+        const cctx = cvs.getContext('2d');
+        cctx.drawImage(ganttImgEl, 0, 0);
+        const dataUrl = cvs.toDataURL('image/png');
+        const b64 = dataUrl.split(',')[1];
+        const bin = atob(b64);
+        const ganttBytes = new Uint8Array(bin.length);
+        for (let i=0; i<bin.length; i++) ganttBytes[i] = bin.charCodeAt(i);
+        const targetWpx = 640;
+        let ganttW = targetWpx;
+        let ganttH = Math.round(targetWpx * (cvs.height / cvs.width));
+        const maxHpx = 900;
+        if (ganttH > maxHpx) { ganttW = Math.round(ganttW * maxHpx / ganttH); ganttH = maxHpx; }
+        s2Children.push(new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 40, after: 20 },
+          children: [ new ImageRun({ type: 'png', data: ganttBytes, transformation: { width: ganttW, height: ganttH } }) ],
+        }));
+        if (_gi < ganttFiles.length - 1) s2Children.push(emptyPara());
       }
-      s2Children.push(new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before:120, after:120 },
-        children: [
-          new ImageRun({
-            type: 'png',
-            data: ganttBytes,
-            transformation: { width: ganttW, height: ganttH },
-          }),
-        ],
-      }));
     }
-  }
-
-  if (v('schedule-text')) {
-    s2Children.push(para(v('schedule-text'), { size:20, spacing:{before:80,after:80} }));
+      s2Children.push(para(v('schedule-text'), { size:20, spacing:{before:80,after:80} }));
   }
 
   const msRows = [];
@@ -35772,11 +35815,11 @@ async function generateDOCX() {
         alignment: AlignmentType.CENTER,
         spacing: { before: 0, after: 0 },
         children: [
-          new TextRun({ text: "Learn more at ", color: NAVY.replace('#',''), size: 22, font: "Calibri" }),
+          new TextRun({ text: "Learn more at ", color: NAVY.replace('#',''), size: 28, font: "Calibri" }),
           new docx.ExternalHyperlink({
             link: "https://www.nauticall.com",
             children: [
-              new TextRun({ text: "www.nauticall.com", color: "2864A0", size: 22, font: "Calibri", underline: {} }),
+              new TextRun({ text: "www.nauticall.com", color: "2864A0", size: 28, font: "Calibri", underline: {} }),
             ],
           }),
         ],
