@@ -35482,7 +35482,7 @@ async function generateDOCX() {
     if (hasVideos) {
       pb.textContent = 'Embedding videos…';
       s6Children.push(hasPhotos ? emptyPara() : new Paragraph({ spacing:{before:0,after:0} }));
-      s6Children.push(para("Videos", { bold:true, color:NAVY, size:22, spacing:{before:80,after:40} }));
+      s6Children.push(para("Videos", { bold:true, color:NAVY, size:24, spacing:{before:80,after:40} }));
 
       // Build play-button icon PNG via canvas
       const playIconBytes = await new Promise(resolve => {
