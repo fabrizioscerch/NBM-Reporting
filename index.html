@@ -33342,9 +33342,9 @@ window.docx = module.exports;
     <div class="card-body" id="b-s1">
       <div class="fl"><label>Summary</label><textarea id="exec-summary" rows="10">The vessel is progressing through the [SPECIFY] phase, with the overall level of completion consistent with the Production Schedule. No significant concerns were identified during the attendance, and construction quality appeared good throughout all areas inspected.
 
-[Final or near-final coating applications have been applied to the majority of external surfaces, with localised paint rectification ongoing in selected areas.] Further details are available in the Paint Inspection section of this report.
+[Final or near-final coating applications have been applied to the majority of external surfaces, with localized paint rectification ongoing in selected areas.] Further details are available in the Paint Inspection section of this report.
 
-[Interior outfitting is advancing across the accommodation areas, with joinery installation, systems integration and finishing works progressing in line with the build programme.] Full details are provided in the Interiors Inspection section of this report.
+[Interior outfitting is advancing across the accommodation areas, with joinery installation, systems integration and finishing works progressing in line with the build program.] Full details are provided in the Interiors Inspection section of this report.
 
 [All technical spaces and engineering areas reflect the vessel's current stage of construction, with installation and commissioning activities progressing accordingly.] Further details are available in the Construction Log section of this report.
 
@@ -33389,9 +33389,9 @@ Details on upcoming milestones and contractual schedule are provided in the Prod
 
 According to the agreed production schedule, the build is progressing as follows:
 
-NauticALL met with the Project Manager of the yard on [date] to discuss next stages and ensure any possible delays are foreseen and planned in advance. So far there are no concerns in sight and the project proceeds as expected.
+NauticALL met with the Project Manager of the yard on [date] to discuss next stages and ensure any possible delays are foreseen and planned in advance. So far there are no concerns in sight, and the project proceeds as expected.
 
-NauticALL and Class will need to reattend on [date] for the witnessing of [milestone].</textarea></textarea></div>
+NauticALL will need to reattend on [date] for [the witnessing of milestone].</textarea></textarea></div>
       <div class="fl"><label>Last Milestone Reached</label><input type="text" id="last-milestone" placeholder="e.g. First hull block in place"></div>
       <div class="g3">
         <div class="fl"><label>Next Milestone</label><input type="text" id="next-milestone" placeholder="e.g. Main engine installation"></div>
@@ -33401,31 +33401,66 @@ NauticALL and Class will need to reattend on [date] for the witnessing of [miles
     </div>
   </div>
 
-  <!-- S3 CHANGE ORDERS -->
+  <!-- S3 MEDIA -->
   <div class="card">
-    <div class="card-header" onclick="toggleCard('s3')">
-      <div class="card-title"><div class="sec-num">3</div><span class="sec-label">Change Orders</span></div>
-      <span class="chevron" id="ch-s3">&#8964;</span>
+    <div class="card-header" onclick="toggleCard('s6')">
+      <div class="card-title"><div class="sec-num">3</div><span class="sec-label">Progress Media</span></div>
+      <span class="chevron" id="ch-s6">&#8964;</span>
     </div>
-    <div class="card-body" id="b-s3">
-      <table class="data-table">
-        <thead><tr><th style="width:36px">#</th><th>Description</th><th style="width:130px">Amount (€)</th><th style="width:130px">Status</th><th style="width:32px"></th></tr></thead>
-        <tbody id="co-body"></tbody>
-      </table>
-      <button class="add-btn" onclick="addCO()">+ Add change order</button>
-      <div class="totals-row">
-        <div class="tot"><div class="tl">Approved total</div><div class="tv" id="tot-approved">€0</div></div>
-        <div class="tot"><div class="tl">Outstanding total</div><div class="tv" id="tot-outstanding">€0</div></div>
-        <div class="tot"><div class="tl">Grand total</div><div class="tv" id="tot-grand">€0</div></div>
+    <div class="card-body" id="b-s6">
+      <div class="media-controls">
+        <div class="fl"><label>Columns</label>
+          <select id="media-cols" onchange="rebuildMedia()">
+            <option value="1">1 column</option>
+            <option value="2" selected>2 columns</option>
+            <option value="3">3 columns</option>
+            <option value="4">4 columns</option>
+          </select>
+        </div>
+        <div class="fl"><label>Rows</label>
+          <select id="media-rows" onchange="rebuildMedia()">
+            <option value="1">1 row</option>
+            <option value="2" selected>2 rows</option>
+            <option value="3">3 rows</option>
+            <option value="4">4 rows</option>
+            <option value="5">5 rows</option>
+          </select>
+        </div>
       </div>
-      <div class="fl" style="margin-top:16px"><label>NauticALL Recommendations <span class="opt">(optional)</span></label><textarea id="co-notes" rows="3" placeholder="[STANDARD TEXT — TO BE CUSTOMIZED] NauticALL has reviewed the outstanding change orders and recommends..."></textarea></div>
+      <div id="media-grid"></div>
+      <div id="media-captions"></div>
+      <div class="fl" style="margin-top:16px">
+        <label>Videos <span class="opt">(upload video files — up to 4, shown as play icons in the report)</span></label>
+        <div id="video-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:8px"></div>
+      </div>
     </div>
   </div>
 
-  <!-- S4 PAINT -->
+  <!-- S4 CONSTRUCTION LOG -->
+  <div class="card">
+    <div class="card-header" onclick="toggleCard('s8')">
+      <div class="card-title"><div class="sec-num">4</div><span class="sec-label">Construction Log <span class="badge">If applicable</span></span></div>
+      <span class="chevron" id="ch-s8">&#8964;</span>
+    </div>
+    <div class="card-body" id="b-s8">
+      <div class="applicable-row"><input type="checkbox" id="log-cb" onchange="toggleAppl('log-fields',this)"><label for="log-cb">This section applies this month</label></div>
+      <div class="fields-wrap disabled" id="log-fields">
+        <div class="fl">
+          <label>Construction Log Report <span class="opt">(upload .pdf — imported as page images, formatting preserved, not editable)</span></label>
+          <div class="gantt-zone" id="log-annex-zone" style="padding:16px;">
+            <input type="file" id="log-annex-file" accept=".docx,.pdf" onchange="loadAnnex(event,'log')">
+            <svg width="22" height="22" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p id="log-annex-name">Upload Construction Log (.pdf)</p>
+          </div>
+          <button type="button" id="log-annex-remove" onclick="removeAnnex('log')" style="display:none;margin-top:8px;background:#f5f5f5;border:1px solid #d0d2d6;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;color:#666;font-family:inherit;">✕ Remove file</button>
+          <div id="log-annex-preview" contenteditable="true" style="margin-top:8px;display:none;padding:12px;border:1px solid #e0e2e6;border-radius:8px;min-height:160px;max-height:500px;overflow-y:auto;background:#fff;font-size:13px;line-height:1.5;"></div>
+          <textarea id="construction-log" rows="10" placeholder="Extracted text appears here — review and edit before generating document..." style="margin-top:8px;"></textarea>
+        </div>
+      </div>
+    <!-- S5 PAINT -->
   <div class="card">
     <div class="card-header" onclick="toggleCard('s4')">
-      <div class="card-title"><div class="sec-num">4</div><span class="sec-label">Paint Inspection <span class="badge">If applicable</span></span></div>
+      <div class="card-title"><div class="sec-num">5</div><span class="sec-label">Paint Inspection <span class="badge">If applicable</span></span></div>
       <span class="chevron" id="ch-s4">&#8964;</span>
     </div>
     <div class="card-body" id="b-s4">
@@ -33458,10 +33493,10 @@ NauticALL and Class will need to reattend on [date] for the witnessing of [miles
     </div>
   </div>
 
-  <!-- S5 INTERIORS -->
+  <!-- S6 INTERIORS -->
   <div class="card">
     <div class="card-header" onclick="toggleCard('s5')">
-      <div class="card-title"><div class="sec-num">5</div><span class="sec-label">Interiors Inspection <span class="badge">If applicable</span></span></div>
+      <div class="card-title"><div class="sec-num">6</div><span class="sec-label">Interiors Inspection <span class="badge">If applicable</span></span></div>
       <span class="chevron" id="ch-s5">&#8964;</span>
     </div>
     <div class="card-body" id="b-s5">
@@ -33494,45 +33529,31 @@ NauticALL and Class will need to reattend on [date] for the witnessing of [miles
     </div>
   </div>
 
-  <!-- S6 MEDIA -->
+  <!-- S7 CHANGE ORDERS -->
   <div class="card">
-    <div class="card-header" onclick="toggleCard('s6')">
-      <div class="card-title"><div class="sec-num">6</div><span class="sec-label">Progress Media</span></div>
-      <span class="chevron" id="ch-s6">&#8964;</span>
+    <div class="card-header" onclick="toggleCard('s3')">
+      <div class="card-title"><div class="sec-num">7</div><span class="sec-label">Change Orders</span></div>
+      <span class="chevron" id="ch-s3">&#8964;</span>
     </div>
-    <div class="card-body" id="b-s6">
-      <div class="media-controls">
-        <div class="fl"><label>Columns</label>
-          <select id="media-cols" onchange="rebuildMedia()">
-            <option value="1">1 column</option>
-            <option value="2" selected>2 columns</option>
-            <option value="3">3 columns</option>
-            <option value="4">4 columns</option>
-          </select>
-        </div>
-        <div class="fl"><label>Rows</label>
-          <select id="media-rows" onchange="rebuildMedia()">
-            <option value="1">1 row</option>
-            <option value="2" selected>2 rows</option>
-            <option value="3">3 rows</option>
-            <option value="4">4 rows</option>
-            <option value="5">5 rows</option>
-          </select>
-        </div>
+    <div class="card-body" id="b-s3">
+      <table class="data-table">
+        <thead><tr><th style="width:36px">#</th><th>Description</th><th style="width:130px">Amount (€)</th><th style="width:130px">Status</th><th style="width:32px"></th></tr></thead>
+        <tbody id="co-body"></tbody>
+      </table>
+      <button class="add-btn" onclick="addCO()">+ Add change order</button>
+      <div class="totals-row">
+        <div class="tot"><div class="tl">Approved total</div><div class="tv" id="tot-approved">€0</div></div>
+        <div class="tot"><div class="tl">Outstanding total</div><div class="tv" id="tot-outstanding">€0</div></div>
+        <div class="tot"><div class="tl">Grand total</div><div class="tv" id="tot-grand">€0</div></div>
       </div>
-      <div id="media-grid"></div>
-      <div id="media-captions"></div>
-      <div class="fl" style="margin-top:16px">
-        <label>Videos <span class="opt">(upload video files — up to 4, shown as play icons in the report)</span></label>
-        <div id="video-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:8px"></div>
-      </div>
+      <div class="fl" style="margin-top:16px"><label>NauticALL Recommendations <span class="opt">(optional)</span></label><textarea id="co-notes" rows="3" placeholder="[STANDARD TEXT — TO BE CUSTOMIZED] NauticALL has reviewed the outstanding change orders and recommends..."></textarea></div>
     </div>
   </div>
 
-  <!-- S7 BDM -->
+  <!-- S8 BDM -->
   <div class="card">
     <div class="card-header" onclick="toggleCard('s7')">
-      <div class="card-title"><div class="sec-num">7</div><span class="sec-label">Buyer's Decision Making <span class="badge">If applicable</span></span></div>
+      <div class="card-title"><div class="sec-num">8</div><span class="sec-label">Buyer's Decision Making <span class="badge">If applicable</span></span></div>
       <span class="chevron" id="ch-s7">&#8964;</span>
     </div>
     <div class="card-body" id="b-s7">
@@ -33548,28 +33569,7 @@ NauticALL and Class will need to reattend on [date] for the witnessing of [miles
     </div>
   </div>
 
-  <!-- S8 CONSTRUCTION LOG -->
-  <div class="card">
-    <div class="card-header" onclick="toggleCard('s8')">
-      <div class="card-title"><div class="sec-num">8</div><span class="sec-label">Construction Log <span class="badge">If applicable</span></span></div>
-      <span class="chevron" id="ch-s8">&#8964;</span>
-    </div>
-    <div class="card-body" id="b-s8">
-      <div class="applicable-row"><input type="checkbox" id="log-cb" onchange="toggleAppl('log-fields',this)"><label for="log-cb">This section applies this month</label></div>
-      <div class="fields-wrap disabled" id="log-fields">
-        <div class="fl">
-          <label>Construction Log Report <span class="opt">(upload .pdf — imported as page images, formatting preserved, not editable)</span></label>
-          <div class="gantt-zone" id="log-annex-zone" style="padding:16px;">
-            <input type="file" id="log-annex-file" accept=".docx,.pdf" onchange="loadAnnex(event,'log')">
-            <svg width="22" height="22" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <p id="log-annex-name">Upload Construction Log (.pdf)</p>
-          </div>
-          <button type="button" id="log-annex-remove" onclick="removeAnnex('log')" style="display:none;margin-top:8px;background:#f5f5f5;border:1px solid #d0d2d6;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;color:#666;font-family:inherit;">✕ Remove file</button>
-          <div id="log-annex-preview" contenteditable="true" style="margin-top:8px;display:none;padding:12px;border:1px solid #e0e2e6;border-radius:8px;min-height:160px;max-height:500px;overflow-y:auto;background:#fff;font-size:13px;line-height:1.5;"></div>
-          <textarea id="construction-log" rows="10" placeholder="Extracted text appears here — review and edit before generating document..." style="margin-top:8px;"></textarea>
-        </div>
-      </div>
-    </div>
+  </div>
   </div>
 
   <div class="generate-wrap">
@@ -34897,7 +34897,7 @@ async function generateDOCX() {
     img.src = 'data:image/png;base64,' + LOGO_COLOR;
   });
   // Footer logo target: 28mm wide → ~106 px
-  const fLogoWpx = Math.round(28/25.4*96);
+  const fLogoWpx = Math.round(50.8/25.4*96);  // 2 inches
   const fLogoHpx = Math.round(fLogoWpx / colorLogoAspect);
 
   function buildFooter(showLogo, reportLabel) {
@@ -35206,14 +35206,17 @@ async function generateDOCX() {
     "Our commitment is to provide you with clear, timely and accurate information so that every decision you make is well informed and every development at the yard is properly documented and followed up.\n\n" +
     "Should you have any questions on the content of this report or wish to discuss any item in further detail, we remain available at your convenience.";
 
+  const _ls = { before:0, after:0, line:276, lineRule:"auto" };
   const letterChildren = [
-    para("Dear " + (ownerName||'[Owner Name]') + ",", { size:22, spacing:{before:80,after:120} }),
-    ...letterText.split('\n\n').map(t => para(t, { size:20, spacing:{before:40,after:80} })),
-    para("Sincerely,", { size:20, spacing:{before:160,after:80} }),
-    para(nbmName||'New Build Manager', { bold:true, color:NAVY, size:24, spacing:{before:0,after:40} }),
-    para("New Build Manager", { size:20, spacing:{before:0,after:40} }),
-    para(nbmEmail, { color:"2864A0", size:20, spacing:{before:0,after:40} }),
-    para(nbmPhone, { size:20, spacing:{before:0,after:0} }),
+    para("Dear " + (ownerName||'[Owner Name]') + ",", { size:24, spacing:_ls }),
+    emptyPara(),
+    ...letterText.split('\n\n').map(t => para(t, { size:24, spacing:_ls })),
+    emptyPara(), emptyPara(), emptyPara(),
+    para("Sincerely,", { size:24, spacing:{before:0,after:0} }),
+    para(nbmName||'New Build Manager', { bold:true, color:NAVY, size:24, spacing:{before:0,after:0} }),
+    para("New Build Manager", { size:24, spacing:{before:0,after:0} }),
+    para(nbmEmail, { color:"2864A0", size:24, spacing:{before:0,after:0} }),
+    para(nbmPhone, { size:24, spacing:{before:0,after:0} }),
   ];
 
   sections.push({
@@ -35228,23 +35231,23 @@ async function generateDOCX() {
   // sections that are toggled off or empty, so TOC and body always match.
   // Build TOC as {label, anchor} pairs for hyperlink support (items 4 & 6)
   const tocEntries = [];
-  tocEntries.push({ label: "1.  General Overview",                    anchor: "sec1" });
-  tocEntries.push({ label: "2.  Production Schedule & Milestones",    anchor: "sec2" });
-  tocEntries.push({ label: "3.  Change Orders",                       anchor: "sec3" });
   const _paintOn = document.getElementById('paint-cb').checked;
   const _intOn   = document.getElementById('int-cb').checked;
-  if (_paintOn) tocEntries.push({ label: "4.  Paint Inspection",      anchor: "sec4" });
-  if (_intOn)   tocEntries.push({ label: "5.  Interiors Inspection",  anchor: "sec5" });
   const _cols = parseInt(document.getElementById('media-cols').value);
   const _rows = parseInt(document.getElementById('media-rows').value);
   const _total = _cols * _rows;
   const _hasMedia = Object.keys(mediaFiles).filter(k => k<_total && mediaFiles[k]).length > 0
                  || Object.keys(videoFiles).filter(k => videoFiles[k]).length > 0;
-  if (_hasMedia) tocEntries.push({ label: "6.  Progress Media",       anchor: "sec6" });
   const _bdmOn = document.getElementById('bdm-cb').checked;
   const _logOn = document.getElementById('log-cb').checked;
-  if (_bdmOn) tocEntries.push({ label: "7.  Buyer's Decision Making", anchor: "sec7" });
-  if (_logOn) tocEntries.push({ label: "8.  Construction Log",        anchor: "sec8" });
+  tocEntries.push({ label: "1.  General Overview",                      anchor: "sec1" });
+  tocEntries.push({ label: "2.  Production Schedule & Milestones",      anchor: "sec2" });
+  if (_hasMedia) tocEntries.push({ label: "3.  Progress Media",         anchor: "sec3" });
+  if (_logOn)    tocEntries.push({ label: "4.  Construction Log",       anchor: "sec4" });
+  if (_paintOn)  tocEntries.push({ label: "5.  Paint Inspection",       anchor: "sec5" });
+  if (_intOn)    tocEntries.push({ label: "6.  Interiors Inspection",   anchor: "sec6" });
+  tocEntries.push({ label: "7.  Change Orders",                         anchor: "sec7" });
+  if (_bdmOn)    tocEntries.push({ label: "8.  Buyer's Decision Making", anchor: "sec8" });
 
   sections.push({
     ...buildSectionProps({ withFooter: true }),
@@ -35274,12 +35277,12 @@ async function generateDOCX() {
     const linkMap = [
       { phrase: "Production Schedule & Milestones",  anchor: "sec2" },
       { phrase: "Production Schedule",               anchor: "sec2" },
-      { phrase: "Change Orders",                     anchor: "sec3" },
-      { phrase: "Paint Inspection",                  anchor: "sec4" },
-      { phrase: "Interiors Inspection",              anchor: "sec5" },
-      { phrase: "Progress Media",                    anchor: "sec6" },
-      { phrase: "Buyer's Decision Making",           anchor: "sec7" },
-      { phrase: "Construction Log",                  anchor: "sec8" },
+      { phrase: "Change Orders",                     anchor: "sec7" },
+      { phrase: "Paint Inspection",                  anchor: "sec5" },
+      { phrase: "Interiors Inspection",              anchor: "sec6" },
+      { phrase: "Progress Media",                    anchor: "sec3" },
+      { phrase: "Buyer's Decision Making",           anchor: "sec8" },
+      { phrase: "Construction Log",                  anchor: "sec4" },
     ];
     // Build regex — longest phrases first so "Production Schedule & Milestones"
     // matches before the shorter "Production Schedule"
@@ -35306,6 +35309,9 @@ async function generateDOCX() {
   ];
 
   // Render each summary paragraph with inline hyperlinks on section names
+  s1Children.push(para("[STANDARD TEXT — TO BE CUSTOMIZED]", { size:20, bold:true, spacing:{before:0,after:0} }));
+  s1Children.push(emptyPara());
+  s1Children.push(emptyPara());
   const summaryRaw = v('exec-summary') || 'The vessel is progressing satisfactorily.';
   summaryRaw.split(/\n\n+/).map(t => t.trim()).filter(Boolean).forEach(t => {
     s1Children.push(buildLinkedPara(t, { size:20, spacing:{before:60,after:60} }));
@@ -35374,7 +35380,13 @@ async function generateDOCX() {
         if (_gi < ganttFiles.length - 1) s2Children.push(emptyPara());
       }
     }
-      s2Children.push(para(v('schedule-text'), { size:20, spacing:{before:80,after:80} }));
+      s2Children.push(emptyPara());
+      s2Children.push(emptyPara());
+      const _schedParas = (v('schedule-text')||'').split(/\n\n+/).map(t=>t.trim()).filter(Boolean);
+      _schedParas.forEach((_sp, _si) => {
+        s2Children.push(para(_sp, { size:20, spacing:{before:0,after:0} }));
+        if (_si === 0) { s2Children.push(emptyPara()); s2Children.push(emptyPara()); }
+      });
   }
 
   const msRows = [];
@@ -35398,183 +35410,7 @@ async function generateDOCX() {
   });
 
   // ══════════════════════════════════════════════════════════════════════════
-  //  SECTION 3 – CHANGE ORDERS
-  // ══════════════════════════════════════════════════════════════════════════
-  const s3Children = [ sectionAnchor("sec3"), sectionHeading("3. Change Orders"), emptyPara() ];
-  const coRows_dom = document.querySelectorAll('#co-body tr');
-
-  if (coRows_dom.length) {
-    const headerRow = new TableRow({
-      children: ['#','Description','Amount','Status'].map((h,i) => new TableCell({
-        width: { size: [500,5500,1700,1800][i], type: WidthType.DXA },
-        shading: { fill: NAVY, type: ShadingType.CLEAR },
-        margins: { top:60, bottom:60, left:120, right:120 },
-        borders: thinBorders,
-        children: [ para(h, { bold:true, color:WHITE, size:18 }) ],
-      })),
-    });
-
-    const dataRows = Array.from(coRows_dom).map((tr,ri) => {
-      const cells = tr.querySelectorAll('td');
-      const num  = cells[0].querySelector('input').value;
-      const desc = cells[1].querySelector('input').value;
-      const amt  = cells[2].querySelector('input').value;
-      const st   = cells[3].querySelector('select').value;
-      const stColor = st==='approved'?'1E7840': st==='outstanding'?'B46400':'B41E1E';
-      const bg = ri%2===0 ? "F8F9FB" : "FFFFFF";
-
-      return new TableRow({
-        children: [
-          new TableCell({
-            width: { size:500, type: WidthType.DXA },
-            shading: { fill:bg, type: ShadingType.CLEAR },
-            margins:{top:60,bottom:60,left:120,right:120},
-            borders: thinBorders,
-            children:[ para(num, {size:18}) ],
-          }),
-          new TableCell({
-            width: { size:5500, type: WidthType.DXA },
-            shading: { fill:bg, type: ShadingType.CLEAR },
-            margins:{top:60,bottom:60,left:120,right:120},
-            borders: thinBorders,
-            children:[ para(desc, {size:18}) ],
-          }),
-          new TableCell({
-            width: { size:1700, type: WidthType.DXA },
-            shading: { fill:bg, type: ShadingType.CLEAR },
-            margins:{top:60,bottom:60,left:120,right:120},
-            borders: thinBorders,
-            children:[ para(currency+fmtMoney(amt), {size:18}) ],
-          }),
-          new TableCell({
-            width: { size:1800, type: WidthType.DXA },
-            shading: { fill:bg, type: ShadingType.CLEAR },
-            margins:{top:60,bottom:60,left:120,right:120},
-            borders: thinBorders,
-            children:[ para(st.charAt(0).toUpperCase()+st.slice(1), {size:18,color:stColor,bold:true}) ],
-          }),
-        ],
-      });
-    });
-
-    s3Children.push(new Table({
-      width: { size: 9500, type: WidthType.DXA },
-      columnWidths: [500,5500,1700,1800],
-      rows: [headerRow, ...dataRows],
-    }));
-
-    s3Children.push(emptyPara());
-    s3Children.push(new Table({
-      width: { size: 9500, type: WidthType.DXA },
-      columnWidths: [3000,6500],
-      rows: [
-        namedRow("Approved total",   document.getElementById('tot-approved').textContent),
-        namedRow("Outstanding total",document.getElementById('tot-outstanding').textContent),
-        namedRow("Grand total",      document.getElementById('tot-grand').textContent),
-      ],
-    }));
-  }
-
-  if (v('co-notes')) {
-    s3Children.push(emptyPara());
-    s3Children.push(para(v('co-notes'), { italic:true, size:20, spacing:{before:80,after:80} }));
-  }
-
-  sections.push({
-    ...buildSectionProps({ withFooter: true }),
-    children: s3Children,
-  });
-
-  // ══════════════════════════════════════════════════════════════════════════
-  //  SECTION 4 – PAINT INSPECTION  (if applicable)
-  // ══════════════════════════════════════════════════════════════════════════
-  if (document.getElementById('paint-cb').checked) {
-    const s4Children = [ sectionAnchor("sec4"), sectionHeading("4. Paint Inspection"), emptyPara() ];
-    const paintRows = [];
-    if (paintSurveyor)       paintRows.push(namedRow("Surveyor", paintSurveyor));
-    if (v('paint-date'))     paintRows.push(namedRow("Inspection date", v('paint-date')));
-    if (v('paint-status'))   paintRows.push(namedRow("Status", v('paint-status')));
-    if (v('paint-areas'))    paintRows.push(namedRow("Areas inspected", v('paint-areas')));
-
-    if (paintRows.length) {
-      s4Children.push(new Table({
-        width: { size:9500, type: WidthType.DXA },
-        columnWidths:[3000,6500],
-        rows: paintRows,
-      }));
-    }
-
-    if (v('paint-findings')) {
-      s4Children.push(emptyPara());
-      s4Children.push(para("Findings & open items:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
-      s4Children.push(para(v('paint-findings'), { size:20, spacing:{before:0,after:80} }));
-    }
-
-    const paintPreviewEl = document.getElementById('paint-annex-preview');
-    const paintAnnexHtml = (paintPreviewEl && paintPreviewEl.style.display !== 'none') ? paintPreviewEl.innerHTML.trim() : '';
-    const paintAnnex = document.getElementById('paint-annex-text')?.value||'';
-    if (paintAnnexHtml) {
-      s4Children.push(emptyPara());
-      s4Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
-      s4Children.push(...(await htmlToDocxChildren(paintAnnexHtml)));
-    } else if (paintAnnex) {
-      s4Children.push(emptyPara());
-      s4Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
-      s4Children.push(para(paintAnnex, { size:19, spacing:{before:0,after:80} }));
-    }
-
-    sections.push({
-      ...buildSectionProps({ withFooter: true }),
-      children: s4Children,
-    });
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  //  SECTION 5 – INTERIORS INSPECTION  (if applicable)
-  // ══════════════════════════════════════════════════════════════════════════
-  if (document.getElementById('int-cb').checked) {
-    const s5Children = [ sectionAnchor("sec5"), sectionHeading("5. Interiors Inspection"), emptyPara() ];
-    const intRows = [];
-    if (intSurveyor)        intRows.push(namedRow("Surveyor", intSurveyor));
-    if (v('int-date'))      intRows.push(namedRow("Inspection date", v('int-date')));
-    if (v('int-status'))    intRows.push(namedRow("Status", v('int-status')));
-    if (v('int-areas'))     intRows.push(namedRow("Areas inspected", v('int-areas')));
-
-    if (intRows.length) {
-      s5Children.push(new Table({
-        width: { size:9500, type: WidthType.DXA },
-        columnWidths:[3000,6500],
-        rows: intRows,
-      }));
-    }
-
-    if (v('int-findings')) {
-      s5Children.push(emptyPara());
-      s5Children.push(para("Findings & open items:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
-      s5Children.push(para(v('int-findings'), { size:20, spacing:{before:0,after:80} }));
-    }
-
-    const intPreviewEl = document.getElementById('int-annex-preview');
-    const intAnnexHtml = (intPreviewEl && intPreviewEl.style.display !== 'none') ? intPreviewEl.innerHTML.trim() : '';
-    const intAnnex = document.getElementById('int-annex-text')?.value||'';
-    if (intAnnexHtml) {
-      s5Children.push(emptyPara());
-      s5Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
-      s5Children.push(...(await htmlToDocxChildren(intAnnexHtml)));
-    } else if (intAnnex) {
-      s5Children.push(emptyPara());
-      s5Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
-      s5Children.push(para(intAnnex, { size:19, spacing:{before:0,after:80} }));
-    }
-
-    sections.push({
-      ...buildSectionProps({ withFooter: true }),
-      children: s5Children,
-    });
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  //  SECTION 6 – PROGRESS MEDIA
+  //  SECTION 3 – PROGRESS MEDIA
   // ══════════════════════════════════════════════════════════════════════════
   const cols = parseInt(document.getElementById('media-cols').value);
   const rows = parseInt(document.getElementById('media-rows').value);
@@ -35585,7 +35421,7 @@ async function generateDOCX() {
 
   if (hasMedia) {
     pb.textContent = 'Embedding photos…';
-    const s6Children = [ sectionAnchor("sec6"), sectionHeading("6. Progress Media"), emptyPara() ];
+    const s6Children = [ sectionAnchor("sec3"), sectionHeading("3. Progress Media"), emptyPara() ];
 
     // ── Photos ──────────────────────────────────────────────────────────────
     if (hasPhotos) {
@@ -35677,14 +35513,60 @@ async function generateDOCX() {
           const vf = k !== undefined ? videoFiles[k] : null;
           const cellChildren = [];
           if (vf) {
+            // Capture first video frame as thumbnail; fall back to generic play icon
+            let thumbBytes = null, thumbW = iconPx, thumbH = iconPx;
+            if (vf.file) {
+              const _vurl = URL.createObjectURL(vf.file);
+              thumbBytes = await new Promise(res => {
+                const _vid = document.createElement('video');
+                _vid.muted = true; _vid.preload = 'metadata';
+                _vid.src = _vurl;
+                const _capture = () => {
+                  const _vc = document.createElement('canvas');
+                  const _asp = _vid.videoHeight && _vid.videoWidth ? _vid.videoHeight / _vid.videoWidth : 9/16;
+                  _vc.width = 240; _vc.height = Math.max(1, Math.round(240 * _asp));
+                  const _vctx = _vc.getContext('2d');
+                  _vctx.drawImage(_vid, 0, 0, _vc.width, _vc.height);
+                  // Play button overlay
+                  const _cx = _vc.width/2, _cy = _vc.height/2, _r = Math.min(_cx,_cy)*0.32;
+                  _vctx.fillStyle = 'rgba(0,0,0,0.48)';
+                  _vctx.beginPath(); _vctx.arc(_cx,_cy,_r,0,Math.PI*2); _vctx.fill();
+                  _vctx.fillStyle = '#ffffff';
+                  const _ps = _r*0.55;
+                  _vctx.beginPath();
+                  _vctx.moveTo(_cx-_ps*0.38,_cy-_ps*0.72);
+                  _vctx.lineTo(_cx-_ps*0.38,_cy+_ps*0.72);
+                  _vctx.lineTo(_cx+_ps*0.78,_cy);
+                  _vctx.closePath(); _vctx.fill();
+                  _vc.toBlob(blob => {
+                    const _rd = new FileReader();
+                    _rd.onloadend = () => {
+                      URL.revokeObjectURL(_vurl);
+                      const _b64 = _rd.result.split(',')[1];
+                      const _bin = atob(_b64); const _arr = new Uint8Array(_bin.length);
+                      for(let _i=0;_i<_bin.length;_i++) _arr[_i]=_bin.charCodeAt(_i);
+                      thumbW = _vc.width; thumbH = _vc.height;
+                      res(_arr);
+                    };
+                    _rd.readAsDataURL(blob);
+                  }, 'image/png');
+                };
+                _vid.addEventListener('seeked', _capture, {once:true});
+                _vid.addEventListener('loadeddata', () => { _vid.currentTime = 0.5; }, {once:true});
+                _vid.addEventListener('error', () => { URL.revokeObjectURL(_vurl); res(null); }, {once:true});
+                _vid.load();
+              }).catch(() => null);
+            }
+            const _imgData = thumbBytes || playIconBytes;
+            const _imgW    = thumbBytes ? thumbW : iconPx;
+            const _imgH    = thumbBytes ? thumbH : iconPx;
             cellChildren.push(new Paragraph({
               alignment: AlignmentType.CENTER,
               spacing:{before:40,after:12},
               children: [
-                new ImageRun({ type:'png', data: playIconBytes, transformation:{ width:iconPx, height:iconPx } }),
+                new ImageRun({ type:'png', data: _imgData, transformation:{ width:_imgW, height:_imgH } }),
               ],
             }));
-            // filename / caption as italic caption
             const label = vf.caption || vf.name || '';
             cellChildren.push(para(label, { color:GRAY, size:16, italic:true, align:AlignmentType.CENTER, spacing:{before:0,after:40} }));
           } else {
@@ -35712,10 +35594,206 @@ async function generateDOCX() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  //  SECTION 7 – BUYER'S DECISION MAKING
+  //  SECTION 4 – CONSTRUCTION LOG
+  // ══════════════════════════════════════════════════════════════════════════
+  if (document.getElementById('log-cb').checked) {
+    const s8Children = [ sectionAnchor("sec4"), sectionHeading("4. Construction Log"), emptyPara() ];
+    const logPreviewEl = document.getElementById('log-annex-preview');
+    const logHtml = (logPreviewEl && logPreviewEl.style.display !== 'none') ? logPreviewEl.innerHTML.trim() : '';
+    if (logHtml) {
+      s8Children.push(...(await htmlToDocxChildren(logHtml)));
+    } else {
+      s8Children.push(para(v('construction-log')||'[No content pasted]', { size:20, spacing:{before:120,after:80} }));
+    }
+
+    sections.push({
+      ...buildSectionProps({ withFooter: true }),
+      children: s8Children,
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
+  //  SECTION 5 – PAINT INSPECTION  (if applicable)
+  // ══════════════════════════════════════════════════════════════════════════
+  if (document.getElementById('paint-cb').checked) {
+    const s4Children = [ sectionAnchor("sec5"), sectionHeading("5. Paint Inspection"), emptyPara() ];
+    const paintRows = [];
+    if (paintSurveyor)       paintRows.push(namedRow("Surveyor", paintSurveyor));
+    if (v('paint-date'))     paintRows.push(namedRow("Inspection date", v('paint-date')));
+    if (v('paint-status'))   paintRows.push(namedRow("Status", v('paint-status')));
+    if (v('paint-areas'))    paintRows.push(namedRow("Areas inspected", v('paint-areas')));
+
+    if (paintRows.length) {
+      s4Children.push(new Table({
+        width: { size:9500, type: WidthType.DXA },
+        columnWidths:[3000,6500],
+        rows: paintRows,
+      }));
+    }
+
+    if (v('paint-findings')) {
+      s4Children.push(emptyPara());
+      s4Children.push(para("Findings & open items:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
+      s4Children.push(para(v('paint-findings'), { size:20, spacing:{before:0,after:80} }));
+    }
+
+    const paintPreviewEl = document.getElementById('paint-annex-preview');
+    const paintAnnexHtml = (paintPreviewEl && paintPreviewEl.style.display !== 'none') ? paintPreviewEl.innerHTML.trim() : '';
+    const paintAnnex = document.getElementById('paint-annex-text')?.value||'';
+    if (paintAnnexHtml) {
+      s4Children.push(emptyPara());
+      s4Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
+      s4Children.push(...(await htmlToDocxChildren(paintAnnexHtml)));
+    } else if (paintAnnex) {
+      s4Children.push(emptyPara());
+      s4Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
+      s4Children.push(para(paintAnnex, { size:19, spacing:{before:0,after:80} }));
+    }
+
+    sections.push({
+      ...buildSectionProps({ withFooter: true }),
+      children: s4Children,
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  SECTION 6 – INTERIORS INSPECTION  (if applicable)
+  // ══════════════════════════════════════════════════════════════════════════
+  if (document.getElementById('int-cb').checked) {
+    const s5Children = [ sectionAnchor("sec6"), sectionHeading("6. Interiors Inspection"), emptyPara() ];
+    const intRows = [];
+    if (intSurveyor)        intRows.push(namedRow("Surveyor", intSurveyor));
+    if (v('int-date'))      intRows.push(namedRow("Inspection date", v('int-date')));
+    if (v('int-status'))    intRows.push(namedRow("Status", v('int-status')));
+    if (v('int-areas'))     intRows.push(namedRow("Areas inspected", v('int-areas')));
+
+    if (intRows.length) {
+      s5Children.push(new Table({
+        width: { size:9500, type: WidthType.DXA },
+        columnWidths:[3000,6500],
+        rows: intRows,
+      }));
+    }
+
+    if (v('int-findings')) {
+      s5Children.push(emptyPara());
+      s5Children.push(para("Findings & open items:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
+      s5Children.push(para(v('int-findings'), { size:20, spacing:{before:0,after:80} }));
+    }
+
+    const intPreviewEl = document.getElementById('int-annex-preview');
+    const intAnnexHtml = (intPreviewEl && intPreviewEl.style.display !== 'none') ? intPreviewEl.innerHTML.trim() : '';
+    const intAnnex = document.getElementById('int-annex-text')?.value||'';
+    if (intAnnexHtml) {
+      s5Children.push(emptyPara());
+      s5Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
+      s5Children.push(...(await htmlToDocxChildren(intAnnexHtml)));
+    } else if (intAnnex) {
+      s5Children.push(emptyPara());
+      s5Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:20, spacing:{before:80,after:60} }));
+      s5Children.push(para(intAnnex, { size:19, spacing:{before:0,after:80} }));
+    }
+
+    sections.push({
+      ...buildSectionProps({ withFooter: true }),
+      children: s5Children,
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  SECTION 7 – CHANGE ORDERS
+  // ══════════════════════════════════════════════════════════════════════════
+  const s3Children = [ sectionAnchor("sec7"), sectionHeading("7. Change Orders"), emptyPara() ];
+  const coRows_dom = document.querySelectorAll('#co-body tr');
+
+  if (coRows_dom.length) {
+    const headerRow = new TableRow({
+      children: ['#','Description','Amount','Status'].map((h,i) => new TableCell({
+        width: { size: [500,5500,1700,1800][i], type: WidthType.DXA },
+        shading: { fill: NAVY, type: ShadingType.CLEAR },
+        margins: { top:60, bottom:60, left:120, right:120 },
+        borders: thinBorders,
+        children: [ para(h, { bold:true, color:WHITE, size:18 }) ],
+      })),
+    });
+
+    const dataRows = Array.from(coRows_dom).map((tr,ri) => {
+      const cells = tr.querySelectorAll('td');
+      const num  = cells[0].querySelector('input').value;
+      const desc = cells[1].querySelector('input').value;
+      const amt  = cells[2].querySelector('input').value;
+      const st   = cells[3].querySelector('select').value;
+      const stColor = st==='approved'?'1E7840': st==='outstanding'?'B46400':'B41E1E';
+      const bg = ri%2===0 ? "F8F9FB" : "FFFFFF";
+
+      return new TableRow({
+        children: [
+          new TableCell({
+            width: { size:500, type: WidthType.DXA },
+            shading: { fill:bg, type: ShadingType.CLEAR },
+            margins:{top:60,bottom:60,left:120,right:120},
+            borders: thinBorders,
+            children:[ para(num, {size:18}) ],
+          }),
+          new TableCell({
+            width: { size:5500, type: WidthType.DXA },
+            shading: { fill:bg, type: ShadingType.CLEAR },
+            margins:{top:60,bottom:60,left:120,right:120},
+            borders: thinBorders,
+            children:[ para(desc, {size:18}) ],
+          }),
+          new TableCell({
+            width: { size:1700, type: WidthType.DXA },
+            shading: { fill:bg, type: ShadingType.CLEAR },
+            margins:{top:60,bottom:60,left:120,right:120},
+            borders: thinBorders,
+            children:[ para(currency+fmtMoney(amt), {size:18}) ],
+          }),
+          new TableCell({
+            width: { size:1800, type: WidthType.DXA },
+            shading: { fill:bg, type: ShadingType.CLEAR },
+            margins:{top:60,bottom:60,left:120,right:120},
+            borders: thinBorders,
+            children:[ para(st.charAt(0).toUpperCase()+st.slice(1), {size:18,color:stColor,bold:true}) ],
+          }),
+        ],
+      });
+    });
+
+    s3Children.push(new Table({
+      width: { size: 9500, type: WidthType.DXA },
+      columnWidths: [500,5500,1700,1800],
+      rows: [headerRow, ...dataRows],
+    }));
+
+    s3Children.push(emptyPara());
+    s3Children.push(new Table({
+      width: { size: 9500, type: WidthType.DXA },
+      columnWidths: [3000,6500],
+      rows: [
+        namedRow("Approved total",   document.getElementById('tot-approved').textContent),
+        namedRow("Outstanding total",document.getElementById('tot-outstanding').textContent),
+        namedRow("Grand total",      document.getElementById('tot-grand').textContent),
+      ],
+    }));
+  }
+
+  if (v('co-notes')) {
+    s3Children.push(emptyPara());
+    s3Children.push(para(v('co-notes'), { italic:true, size:20, spacing:{before:80,after:80} }));
+  }
+
+  sections.push({
+    ...buildSectionProps({ withFooter: true }),
+    children: s3Children,
+  });
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  SECTION 8 – BUYER'S DECISION MAKING
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('bdm-cb').checked) {
-    const s7Children = [ sectionAnchor("sec7"), sectionHeading("7. Buyer's Decision Making"), emptyPara() ];
+    const s7Children = [ sectionAnchor("sec8"), sectionHeading("8. Buyer's Decision Making"), emptyPara() ];
     const bdmRows_dom = document.querySelectorAll('#bdm-body tr');
 
     if (bdmRows_dom.length) {
@@ -35768,26 +35846,6 @@ async function generateDOCX() {
     });
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  SECTION 8 – CONSTRUCTION LOG
-  // ══════════════════════════════════════════════════════════════════════════
-  if (document.getElementById('log-cb').checked) {
-    const s8Children = [ sectionAnchor("sec8"), sectionHeading("8. Construction Log"), emptyPara() ];
-    const logPreviewEl = document.getElementById('log-annex-preview');
-    const logHtml = (logPreviewEl && logPreviewEl.style.display !== 'none') ? logPreviewEl.innerHTML.trim() : '';
-    if (logHtml) {
-      s8Children.push(...(await htmlToDocxChildren(logHtml)));
-    } else {
-      s8Children.push(para(v('construction-log')||'[No content pasted]', { size:20, spacing:{before:120,after:80} }));
-    }
-
-    sections.push({
-      ...buildSectionProps({ withFooter: true }),
-      children: s8Children,
-    });
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
   //  BACK PAGE
   // ══════════════════════════════════════════════════════════════════════════
   // Grey page background (document-level D9D9D9). No navy rectangle.
