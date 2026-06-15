@@ -33763,39 +33763,41 @@ function rebuildVideos() {
     cell.style.flexDirection = 'column';
     cell.style.gap = '6px';
 
-    const slot = document.createElement('div');
-    slot.className = 'media-slot';
-    slot.style.aspectRatio = '1/1';
+    // Label
+    const lbl = document.createElement('div');
+    lbl.textContent = 'Video ' + (i + 1);
+    lbl.style.cssText = 'font-size:11px;font-weight:600;color:#1c3548;letter-spacing:.03em;text-transform:uppercase;';
 
-    if (videoFiles[i]) {
-      // Show play icon overlay + filename
-      slot.innerHTML = `
-        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#1c354815;gap:4px">
-          <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="19" fill="#1c3548"/><polygon points="14,10 14,30 32,20" fill="#fff"/></svg>
-          <span style="font-size:10px;color:#555;text-align:center;max-width:90%;word-break:break-all;padding:0 4px">${videoFiles[i].name}</span>
-        </div>`;
-    } else {
-      slot.innerHTML = `
-        <svg width="28" height="28" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="19" fill="#e0e2e6"/><polygon points="14,10 14,30 32,20" fill="#bbb"/></svg>
-        <span class="media-slot-label">Add video</span>`;
-    }
-
-    const inp = document.createElement('input');
-    inp.type = 'file';
-    inp.accept = 'video/*';
-    inp.style.position = 'absolute';
-    inp.style.inset = '0';
-    inp.style.opacity = '0';
-    inp.style.cursor = 'pointer';
-    inp.style.width = '100%';
-    inp.style.height = '100%';
-    inp.addEventListener('change', e => {
-      const f = e.target.files[0]; if (!f) return;
-      videoFiles[i] = { file: f, name: f.name, caption: '', link: '' };
-      rebuildVideos();
+    // Video link input (primary — replaces file upload)
+    const lnk = document.createElement('input');
+    lnk.type = 'text';
+    lnk.placeholder = 'Video link';
+    lnk.id = 'vlink-' + i;
+    lnk.style.fontSize = '12px';
+    lnk.style.padding = '5px 8px';
+    lnk.style.border = '1px solid #e0e2e6';
+    lnk.style.borderRadius = '6px';
+    lnk.style.width = '100%';
+    lnk.value = (videoFiles[i] && videoFiles[i].link) || '';
+    lnk.addEventListener('input', e => {
+      const url = e.target.value.trim();
+      if (url) {
+        if (!videoFiles[i]) videoFiles[i] = { name: 'Video ' + (i + 1), caption: '', link: '' };
+        videoFiles[i].link = url;
+        // Try to extract a readable filename from the URL
+        try {
+          const parts = decodeURIComponent(new URL(url).pathname).split('/');
+          const fn = parts.filter(Boolean).pop();
+          if (fn) videoFiles[i].name = fn;
+        } catch(_) {}
+      } else {
+        // Link cleared — remove slot unless caption still set
+        if (videoFiles[i] && !videoFiles[i].caption) delete videoFiles[i];
+        else if (videoFiles[i]) videoFiles[i].link = '';
+      }
     });
-    slot.appendChild(inp);
 
+    // Caption input (optional)
     const cap = document.createElement('input');
     cap.type = 'text';
     cap.placeholder = 'Caption (optional)';
@@ -33806,23 +33808,13 @@ function rebuildVideos() {
     cap.style.borderRadius = '6px';
     cap.style.width = '100%';
     cap.value = (videoFiles[i] && videoFiles[i].caption) || '';
-    cap.addEventListener('change', e => { if (videoFiles[i]) videoFiles[i].caption = e.target.value; });
+    cap.addEventListener('input', e => {
+      if (videoFiles[i]) videoFiles[i].caption = e.target.value;
+    });
 
-    const lnk = document.createElement('input');
-    lnk.type = 'text';
-    lnk.placeholder = 'SharePoint link (optional)';
-    lnk.id = 'vlink-' + i;
-    lnk.style.fontSize = '12px';
-    lnk.style.padding = '5px 8px';
-    lnk.style.border = '1px solid #e0e2e6';
-    lnk.style.borderRadius = '6px';
-    lnk.style.width = '100%';
-    lnk.value = (videoFiles[i] && videoFiles[i].link) || '';
-    lnk.addEventListener('change', e => { if (videoFiles[i]) videoFiles[i].link = e.target.value; });
-
-    cell.appendChild(slot);
-    cell.appendChild(cap);
+    cell.appendChild(lbl);
     cell.appendChild(lnk);
+    cell.appendChild(cap);
     grid.appendChild(cell);
   }
 }
