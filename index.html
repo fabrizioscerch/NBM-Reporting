@@ -33742,6 +33742,7 @@ function rebuildMedia(){
     cap.style.width='100%';
     cap.value=(mediaFiles[i]&&mediaFiles[i].caption)||'';
     cap.addEventListener('change',e=>{if(mediaFiles[i]) mediaFiles[i].caption=e.target.value;});
+
     cell.appendChild(slot);
     cell.appendChild(cap);
     grid.appendChild(cell);
@@ -33790,7 +33791,7 @@ function rebuildVideos() {
     inp.style.height = '100%';
     inp.addEventListener('change', e => {
       const f = e.target.files[0]; if (!f) return;
-      videoFiles[i] = { file: f, name: f.name, caption: '' };
+      videoFiles[i] = { file: f, name: f.name, caption: '', link: '' };
       rebuildVideos();
     });
     slot.appendChild(inp);
@@ -33807,8 +33808,21 @@ function rebuildVideos() {
     cap.value = (videoFiles[i] && videoFiles[i].caption) || '';
     cap.addEventListener('change', e => { if (videoFiles[i]) videoFiles[i].caption = e.target.value; });
 
+    const lnk = document.createElement('input');
+    lnk.type = 'text';
+    lnk.placeholder = 'SharePoint link (optional)';
+    lnk.id = 'vlink-' + i;
+    lnk.style.fontSize = '12px';
+    lnk.style.padding = '5px 8px';
+    lnk.style.border = '1px solid #e0e2e6';
+    lnk.style.borderRadius = '6px';
+    lnk.style.width = '100%';
+    lnk.value = (videoFiles[i] && videoFiles[i].link) || '';
+    lnk.addEventListener('change', e => { if (videoFiles[i]) videoFiles[i].link = e.target.value; });
+
     cell.appendChild(slot);
     cell.appendChild(cap);
+    cell.appendChild(lnk);
     grid.appendChild(cell);
   }
 }
@@ -34523,7 +34537,7 @@ async function generateDOCX() {
               bold: style.bold,
               italics: style.italic,
               underline: style.underline ? {} : undefined,
-              size: 20,
+              size: 24,
               font: "Calibri",
               color: "1a1a2e",
             }));
@@ -34686,7 +34700,7 @@ async function generateDOCX() {
           inlineBuf.forEach(n => {
             if (n.nodeType === 3) {
               if (n.textContent) {
-                runs.push(new TextRun({ text: n.textContent, size: 20, font:"Calibri", color:"1a1a2e" }));
+                runs.push(new TextRun({ text: n.textContent, size: 24, font:"Calibri", color:"1a1a2e" }));
               }
             } else if (n.nodeType === 1) {
               const t = n.tagName.toLowerCase();
@@ -34907,7 +34921,7 @@ async function generateDOCX() {
         children: [ new Paragraph({
           alignment: AlignmentType.CENTER,
           children: [
-            new TextRun({ children: ["Page ", docx.PageNumber.CURRENT, " of ", docx.PageNumber.TOTAL_PAGES], color: "8090A0", size: 16, font: "Calibri" }),
+            new TextRun({ children: ["Page ", docx.PageNumber.CURRENT, " of ", docx.PageNumber.TOTAL_PAGES], color: "8090A0", size: 18, font: "Calibri" }),
           ],
         })],
       });
@@ -35528,7 +35542,7 @@ async function generateDOCX() {
               spacing:{before:0,after:40},
               children: [
                 new ExternalHyperlink({
-                  link: vf.name || '',
+                  link: vf.link || vf.name || '',
                   children: [ new TextRun({ text: '▶ Open video', color:'2864A0', underline:{}, size:18, font:'Calibri' }) ],
                 }),
               ],
