@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NauticALL — New Build Report Generator (Word)</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTIiIGZpbGw9IiMxYzM1NDgiLz48cGF0aCBkPSJNMTIgMzggUTMyIDQ4IDUyIDM4IEw0OCA0NCBRMzIgNTQgMTYgNDRaIiBmaWxsPSIjN2E5Y2I1Ii8+PHJlY3QgeD0iMjYiIHk9IjIwIiB3aWR0aD0iMTIiIGhlaWdodD0iMTgiIHJ4PSIyIiBmaWxsPSIjN2E5Y2I1Ii8+PHJlY3QgeD0iMzEiIHk9IjEwIiB3aWR0aD0iMiIgaGVpZ2h0PSIxNCIgZmlsbD0iIzdhOWNiNSIvPjxwb2x5Z29uIHBvaW50cz0iMzMsMTAgNDIsMTQgMzMsMTgiIGZpbGw9IiM1YjdlOTUiLz48L3N2Zz4=">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -33381,7 +33382,7 @@ Details on upcoming milestones and contractual schedule are provided in the Prod
         <div class="gantt-zone" id="gantt-zone">
           <input type="file" accept="image/*,.pdf" multiple onchange="previewGantt(event)">
           <svg width="28" height="28" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <p>Click to upload — hold Shift/Cmd to select multiple pages</p>
+          <p>(Click to upload — multiple files upload allowed)</p>
         </div>
         <div id="gantt-previews" style="display:none;margin-bottom:12px"></div>
       </div>
@@ -33414,7 +33415,6 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
             <option value="1">1 column</option>
             <option value="2" selected>2 columns</option>
             <option value="3">3 columns</option>
-            <option value="4">4 columns</option>
           </select>
         </div>
         <div class="fl"><label>Rows</label>
@@ -33425,6 +33425,15 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
             <option value="4">4 rows</option>
             <option value="5">5 rows</option>
           </select>
+          <script>
+            (function(){
+              const sel=document.getElementById('media-rows');
+              for(let i=6;i<=100;i++){
+                const o=document.createElement('option');
+                o.value=i; o.textContent=i+' rows'; sel.appendChild(o);
+              }
+            })();
+          </script>
         </div>
       </div>
       <div id="media-grid"></div>
@@ -33535,10 +33544,12 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
   <!-- S7 CHANGE ORDERS -->
   <div class="card">
     <div class="card-header" onclick="toggleCard('s3')">
-      <div class="card-title"><div class="sec-num">7</div><span class="sec-label">Change Orders</span></div>
+      <div class="card-title"><div class="sec-num">7</div><span class="sec-label">Change Orders <span class="badge">If applicable</span></span></div>
       <span class="chevron" id="ch-s3">&#8964;</span>
     </div>
     <div class="card-body" id="b-s3">
+      <div class="applicable-row"><input type="checkbox" id="co-cb" onchange="toggleAppl('co-fields',this)"><label for="co-cb">This section applies this month</label></div>
+      <div class="fields-wrap disabled" id="co-fields">
       <table class="data-table">
         <thead><tr><th style="width:36px">#</th><th>Description</th><th style="width:130px">Amount (€)</th><th style="width:130px">Status</th><th style="width:32px"></th></tr></thead>
         <tbody id="co-body"></tbody>
@@ -33550,6 +33561,7 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
         <div class="tot"><div class="tl">Grand total</div><div class="tv" id="tot-grand">€0</div></div>
       </div>
       <div class="fl" style="margin-top:16px"><label>NauticALL Recommendations <span class="opt">(optional)</span></label><textarea id="co-notes" rows="3" placeholder="[STANDARD TEXT — TO BE CUSTOMIZED] NauticALL has reviewed the outstanding change orders and recommends..."></textarea></div>
+      </div>
     </div>
   </div>
 
@@ -33709,37 +33721,102 @@ function rebuildMedia(){
   grid.style.gap='12px';
   grid.innerHTML='';
   document.getElementById('media-captions').innerHTML='';
+
+  let dragSrcIdx=null;
+
   for(let i=0;i<total;i++){
     const cell=document.createElement('div');
-    cell.style.display='flex';
-    cell.style.flexDirection='column';
-    cell.style.gap='6px';
+    cell.style.cssText='display:flex;flex-direction:column;gap:6px;';
+
     const slot=document.createElement('div');
     slot.className='media-slot';
     slot.dataset.idx=i;
+
     if(mediaFiles[i]){
+      // — Filled slot: show image, remove button, enable drag ——
       const img=document.createElement('img');
       img.src=mediaFiles[i].url;
+      img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;pointer-events:none;';
       slot.appendChild(img);
+
+      // Remove (✕) button
+      const rmBtn=document.createElement('button');
+      rmBtn.innerHTML='&times;';
+      rmBtn.title='Remove photo';
+      rmBtn.style.cssText='position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(0,0,0,0.6);color:#fff;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;padding:0;';
+      rmBtn.addEventListener('click',e=>{
+        e.stopPropagation();
+        if(mediaFiles[i]&&mediaFiles[i].url) URL.revokeObjectURL(mediaFiles[i].url);
+        delete mediaFiles[i];
+        rebuildMedia();
+      });
+      slot.appendChild(rmBtn);
+
+      // Drag handle indicator
+      const dragHint=document.createElement('div');
+      dragHint.title='Drag to reorder';
+      dragHint.style.cssText='position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:28px;height:4px;border-radius:2px;background:rgba(255,255,255,0.7);cursor:grab;pointer-events:none;';
+      slot.appendChild(dragHint);
+
+      slot.draggable=true;
+      slot.style.cursor='grab';
+      slot.addEventListener('dragstart',e=>{
+        dragSrcIdx=i;
+        e.dataTransfer.effectAllowed='move';
+        e.dataTransfer.setData('text/plain',String(i));
+        setTimeout(()=>slot.style.opacity='0.45',0);
+      });
+      slot.addEventListener('dragend',e=>{ slot.style.opacity=''; });
+
     } else {
+      // — Empty slot: show placeholder + file input ——
       slot.innerHTML=`<svg width="22" height="22" fill="none" stroke="#ccc" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span class="media-slot-label">Add photo</span>`;
+      const inp=document.createElement('input');
+      inp.type='file'; inp.accept='image/*';
+      inp.style.cssText='position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;';
+      inp.addEventListener('change',e=>{
+        const f=e.target.files[0]; if(!f) return;
+        if(mediaFiles[i]&&mediaFiles[i].url) URL.revokeObjectURL(mediaFiles[i].url);
+        mediaFiles[i]={file:f,url:URL.createObjectURL(f),caption:''};
+        rebuildMedia();
+      });
+      slot.appendChild(inp);
     }
-    const inp=document.createElement('input');
-    inp.type='file'; inp.accept='image/*';
-    inp.addEventListener('change',e=>{
-      const f=e.target.files[0]; if(!f) return;
-      mediaFiles[i]={file:f,url:URL.createObjectURL(f)};
+
+    // Drop target (all slots) — handles both OS file drops and internal reordering
+    slot.addEventListener('dragover',e=>{
+      e.preventDefault();
+      e.dataTransfer.dropEffect = e.dataTransfer.types.includes('Files') ? 'copy' : 'move';
+      slot.style.outline='2px dashed #1c3548';
+      slot.style.outlineOffset='2px';
+    });
+    slot.addEventListener('dragleave',e=>{ slot.style.outline=''; slot.style.outlineOffset=''; });
+    slot.addEventListener('drop',e=>{
+      e.preventDefault();
+      slot.style.outline=''; slot.style.outlineOffset='';
+      // OS file drop (drag from Finder/desktop)
+      if(e.dataTransfer.files && e.dataTransfer.files.length > 0){
+        const f=e.dataTransfer.files[0];
+        if(!f.type.startsWith('image/')) return;
+        if(mediaFiles[i]&&mediaFiles[i].url) URL.revokeObjectURL(mediaFiles[i].url);
+        mediaFiles[i]={file:f,url:URL.createObjectURL(f),caption:(mediaFiles[i]&&mediaFiles[i].caption)||''};
+        rebuildMedia();
+        return;
+      }
+      // Internal reorder
+      const src=parseInt(e.dataTransfer.getData('text/plain'));
+      const dest=i;
+      if(isNaN(src)||src===dest) return;
+      const tmp=mediaFiles[src]||null;
+      if(mediaFiles[dest]) mediaFiles[src]=mediaFiles[dest]; else delete mediaFiles[src];
+      if(tmp) mediaFiles[dest]=tmp; else delete mediaFiles[dest];
       rebuildMedia();
     });
-    slot.appendChild(inp);
+
     const cap=document.createElement('input');
     cap.type='text'; cap.placeholder='Caption (optional)';
     cap.id='cap-'+i;
-    cap.style.fontSize='12px';
-    cap.style.padding='5px 8px';
-    cap.style.border='1px solid #e0e2e6';
-    cap.style.borderRadius='6px';
-    cap.style.width='100%';
+    cap.style.cssText='font-size:12px;padding:5px 8px;border:1px solid #e0e2e6;border-radius:6px;width:100%;';
     cap.value=(mediaFiles[i]&&mediaFiles[i].caption)||'';
     cap.addEventListener('change',e=>{if(mediaFiles[i]) mediaFiles[i].caption=e.target.value;});
 
@@ -33748,6 +33825,7 @@ function rebuildMedia(){
     grid.appendChild(cell);
   }
 }
+
 
 // ── Video upload slots (up to 4, similar to photo slots) ──────────────────
 let videoFiles = {};
@@ -34514,8 +34592,8 @@ async function generateDOCX() {
 
     // Max content width in pixels (≈170mm of A4 content area at 96dpi)
     const MAX_IMG_W_PX = 640;
-    // Max content height: A4 297mm - 20mm top - 25mm bottom margin - 12mm footer ≈ 240mm ≈ 740px
-    const MAX_IMG_H_PX = 740;
+    // Max content height for annex pages: 9.75" at 96dpi = 936px
+    const MAX_IMG_H_PX = 936;
 
     // Inline element → array of TextRun
     function nodeToRuns(node, style) {
@@ -35246,6 +35324,7 @@ async function generateDOCX() {
   const _hasMedia = Object.keys(mediaFiles).filter(k => k<_total && mediaFiles[k]).length > 0
                  || Object.keys(videoFiles).filter(k => videoFiles[k]).length > 0;
   const _bdmOn = document.getElementById('bdm-cb').checked;
+  const _coOn  = document.getElementById('co-cb').checked;
   const _logOn = document.getElementById('log-cb').checked;
   tocEntries.push({ label: "1.  General Overview",                      anchor: "sec1" });
   tocEntries.push({ label: "2.  Production Schedule & Milestones",      anchor: "sec2" });
@@ -35253,7 +35332,7 @@ async function generateDOCX() {
   if (_logOn)    tocEntries.push({ label: "4.  Construction Log",       anchor: "sec4" });
   if (_paintOn)  tocEntries.push({ label: "5.  Paint Inspection",       anchor: "sec5" });
   if (_intOn)    tocEntries.push({ label: "6.  Interiors Inspection",   anchor: "sec6" });
-  tocEntries.push({ label: "7.  Change Orders",                         anchor: "sec7" });
+  if (_coOn)    tocEntries.push({ label: "7.  Change Orders",             anchor: "sec7" });
   if (_bdmOn)    tocEntries.push({ label: "8.  Buyer's Decision Making", anchor: "sec8" });
 
   sections.push({
@@ -35333,13 +35412,13 @@ async function generateDOCX() {
 
   if (v('last-visit')||v('next-visit')) {
     s1Children.push(emptyPara());
-    s1Children.push(new Table({
+    const _visitRows = [];
+    if (v('last-visit')) _visitRows.push(namedRow("Last site visit", v('last-visit')));
+    if (v('next-visit')) _visitRows.push(namedRow("Next site visit", v('next-visit')));
+    if (_visitRows.length) s1Children.push(new Table({
       width: { size: 9500, type: WidthType.DXA },
       columnWidths: [3000, 6500],
-      rows: [
-        namedRow("Last site visit", v('last-visit')||'—'),
-        namedRow("Next site visit", v('next-visit')||'—'),
-      ],
+      rows: _visitRows,
     }));
   }
 
@@ -35482,7 +35561,7 @@ async function generateDOCX() {
     if (hasVideos) {
       pb.textContent = 'Embedding videos…';
       s6Children.push(hasPhotos ? emptyPara() : new Paragraph({ spacing:{before:0,after:0} }));
-      s6Children.push(para("Videos", { bold:true, color:NAVY, size:24, spacing:{before:80,after:40} }));
+      s6Children.push(para("Videos", { bold:true, color:NAVY, size:22, spacing:{before:80,after:40} }));
 
       // Build play-button icon PNG via canvas
       const playIconBytes = await new Promise(resolve => {
@@ -35749,7 +35828,7 @@ async function generateDOCX() {
     s3Children.push(para(v('co-notes'), { italic:true, size:24, spacing:{before:80,after:80} }));
   }
 
-  sections.push({
+  if (_coOn) sections.push({
     ...buildSectionProps({ withFooter: true }),
     children: s3Children,
   });
