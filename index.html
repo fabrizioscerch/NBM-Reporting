@@ -33267,8 +33267,77 @@ while (n === a[++i] && n === a[++i] && n === a[++i] && n === a[++i] && n === a[+
 window.docx = module.exports;
 })();
 </script>
+
+<style>
+#login-overlay {
+  position:fixed;inset:0;z-index:99999;
+  background:linear-gradient(135deg,#0e2233 0%,#1c3548 60%,#2a4f6e 100%);
+  display:flex;align-items:center;justify-content:center;
+}
+#login-box {
+  background:#fff;border-radius:16px;padding:40px 44px;width:360px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.4);text-align:center;
+}
+#login-box img { height:64px;margin-bottom:20px; }
+#login-box h2 { font-size:18px;font-weight:700;color:#1c3548;margin:0 0 4px; }
+#login-box p  { font-size:13px;color:#7a8fa0;margin:0 0 24px; }
+#login-box input {
+  width:100%;padding:11px 14px;border:1.5px solid #d0dce6;border-radius:8px;
+  font-size:14px;color:#1c3548;outline:none;box-sizing:border-box;
+  transition:border-color .2s;
+}
+#login-box input:focus { border-color:#1c3548; }
+#login-box button {
+  margin-top:14px;width:100%;padding:12px;border:none;border-radius:8px;
+  background:#1c3548;color:#fff;font-size:14px;font-weight:600;cursor:pointer;
+  transition:background .2s;
+}
+#login-box button:hover { background:#2a4f6e; }
+#login-error {
+  margin-top:10px;font-size:12px;color:#c0392b;min-height:16px;
+}
+</style>
 </head>
 <body>
+<div id="login-overlay">
+  <div id="login-box">
+    <img id="login-logo" alt="NauticALL">
+    <h2>NBM Reporting Portal</h2>
+    <p>Enter your password to continue</p>
+    <input type="password" id="login-pwd" placeholder="Password" onkeydown="if(event.key==='Enter') doLogin()">
+    <button onclick="doLogin()">Sign in</button>
+    <div id="login-error"></div>
+  </div>
+</div>
+<script>
+(function(){
+  // Copy topbar logo src to login logo once DOM is ready
+  function syncLogo(){
+    const tl=document.getElementById('topbar-logo');
+    const ll=document.getElementById('login-logo');
+    if(tl&&ll&&tl.src) ll.src=tl.src;
+  }
+  // Check session
+  if(sessionStorage.getItem('nbm_auth')==='1'){
+    document.getElementById('login-overlay').style.display='none';
+  } else {
+    document.addEventListener('DOMContentLoaded', syncLogo);
+  }
+})();
+function doLogin(){
+  const pwd=document.getElementById('login-pwd').value;
+  const err=document.getElementById('login-error');
+  if(pwd==='NauticNBM25!'){
+    sessionStorage.setItem('nbm_auth','1');
+    document.getElementById('login-overlay').style.display='none';
+    err.textContent='';
+  } else {
+    err.textContent='Incorrect password. Please try again.';
+    document.getElementById('login-pwd').value='';
+    document.getElementById('login-pwd').focus();
+  }
+}
+</script>
 
 <div class="topbar">
   <img id="topbar-logo" alt="NauticALL">
@@ -33341,29 +33410,82 @@ window.docx = module.exports;
       <span class="chevron" id="ch-s1">&#8964;</span>
     </div>
     <div class="card-body" id="b-s1">
-      <div class="fl"><label>Summary</label><textarea id="exec-summary" rows="10">The vessel is progressing through the [SPECIFY] phase, with the overall level of completion consistent with the Production Schedule. No significant concerns were identified during the attendance, and construction quality appeared good throughout all areas inspected.
 
-[Final or near-final coating applications have been applied to the majority of external surfaces, with localized paint rectification ongoing in selected areas.] Further details are available in the Paint Inspection section of this report.
-
-[Interior outfitting is advancing across the accommodation areas, with joinery installation, systems integration and finishing works progressing in line with the build program.] Full details are provided in the Interiors Inspection section of this report.
-
-[All technical spaces and engineering areas reflect the vessel's current stage of construction, with installation and commissioning activities progressing accordingly.] Further details are available in the Construction Log section of this report.
-
-[A number of change orders have been reviewed and are being managed in accordance with the construction contract.] Details are provided in the Change Orders section of this report.
-
-[Outstanding decisions required from the Owner are being tracked and followed up as required.] Details are provided in the Buyer's Decision Making section of this report.
-
-A selection of progress photographs and video footage from the period is available in the Progress Media section of this report.
-
-Details on upcoming milestones and contractual schedule are provided in the Production Schedule &amp; Milestones section of this report.</textarea></div>
-      <div class="applicable-row" style="margin-top:4px;margin-bottom:8px">
-        <input type="checkbox" id="crew-cb" onchange="document.getElementById('crew-fields').classList.toggle('disabled',!this.checked)">
-        <label for="crew-cb" style="font-size:13px;font-weight:500;color:#444">Include crew notes in this overview</label>
+      <!-- Info panel -->
+      <div style="background:#eef4f9;border-left:3px solid #1c3548;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#2a4a5e;line-height:1.6;">
+        <strong style="display:block;margin-bottom:4px;">📋 Select the subsections applicable to this report</strong>
+        Tick each subsection you want to include, then review and customise the prefilled text. Unticked subsections will not appear in the report.
+        <div style="margin-top:8px;border-top:1px solid #c8dae8;padding-top:8px;">
+          <strong>💡 These phrases auto-link to the relevant section in the report — use them to guide your client:</strong>
+          <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;">
+            <span style="background:#1c3548;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;">Production Schedule</span>
+            <span style="background:#1c3548;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;">Production Schedule &amp; Milestones</span>
+            <span style="background:#1c3548;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;">Paint Inspection</span>
+            <span style="background:#1c3548;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;">Interiors Inspection</span>
+            <span style="background:#1c3548;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;">Construction Log</span>
+            <span style="background:#1c3548;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;">Change Orders</span>
+            <span style="background:#1c3548;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;">Buyer's Decision Making</span>
+            <span style="background:#1c3548;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;">Progress Media</span>
+          </div>
+        </div>
       </div>
-      <div class="fields-wrap disabled" id="crew-fields">
-        <div class="fl"><label>Crew <span class="opt">(complete only if crew joined onboard this month)</span></label><textarea id="crew-notes" rows="4">[If applicable] During the month of [Month], [Crew Member Name] joined the vessel onboard as [Position/Role]. NauticALL was available to assist and coordinate as needed to ensure a smooth integration of the crew during this phase of the build.</textarea></div>
+
+      <!-- a) Overall Status -->
+      <div class="applicable-row"><input type="checkbox" id="s1-overall-cb" onchange="toggleAppl('s1-overall-fields',this)"><label for="s1-overall-cb">a) Overall Status</label></div>
+      <div class="fields-wrap disabled" id="s1-overall-fields">
+        <div class="fl"><textarea id="s1-overall" rows="6">[TEXT TO BE CUSTOMIZED] The vessel is progressing through the [SPECIFY] phase, with the overall level of completion consistent with the Production Schedule. No significant concerns were identified during the attendance, and construction quality appeared good throughout all areas inspected.
+
+Mechanical, electrical, and technical systems installations are advancing across engine rooms, steering spaces, and technical areas, with testing and commissioning activities commencing in line with the build program. A comprehensive photographic record is available in the Progress Media section. Further progress notes are provided in the Construction Log section.
+
+The next contractual milestone is on track / scheduled for [DATE]. Full details of the contractual timeline and upcoming key dates are provided in the Production Schedule &amp; Milestones section. Outstanding decisions required from the Owner are being tracked and followed up — details are provided in the Buyer's Decision Making section.</textarea></div>
       </div>
-      <div class="g2">
+
+      <!-- b) Hull & Superstructure -->
+      <div class="applicable-row"><input type="checkbox" id="s1-hull-cb" onchange="toggleAppl('s1-hull-fields',this)"><label for="s1-hull-cb">b) Hull &amp; Superstructure</label></div>
+      <div class="fields-wrap disabled" id="s1-hull-fields">
+        <div class="fl"><textarea id="s1-hull" rows="5">[TEXT TO BE CUSTOMIZED] As of our latest inspection, [XX] hull blocks out of [XX] have been completed and joined, [XX] are in different stages of assembly and [XX] blocks are in the cut phase.
+
+As per the production plan, the construction of the superstructure commenced after the hull and the two structures have not yet been joined. Out of [XX] superstructure blocks, [XX] are being assembled, [XX] are being cut and [XX] are in the nesting design phase.</textarea></div>
+      </div>
+
+      <!-- c) Exterior -->
+      <div class="applicable-row"><input type="checkbox" id="s1-exterior-cb" onchange="toggleAppl('s1-exterior-fields',this)"><label for="s1-exterior-cb">c) Exterior</label></div>
+      <div class="fields-wrap disabled" id="s1-exterior-fields">
+        <div class="fl"><textarea id="s1-exterior" rows="4">[TEXT TO BE CUSTOMIZED] The yacht is nearing completion externally. Coatings and teak decking are largely finished, with remaining works mainly involving cosmetic touch-ups, removal of protections, and final installation of deck equipment, lighting, AV systems, and radar mast components.</textarea></div>
+      </div>
+
+      <!-- d) Interior -->
+      <div class="applicable-row"><input type="checkbox" id="s1-interior-cb" onchange="toggleAppl('s1-interior-fields',this)"><label for="s1-interior-cb">d) Interior</label></div>
+      <div class="fields-wrap disabled" id="s1-interior-fields">
+        <div class="fl"><textarea id="s1-interior" rows="4">[TEXT TO BE CUSTOMIZED] Interior outfitting is advancing across the accommodation areas, with joinery installation, systems integration and finishing works progressing in line with the build program. Full details are provided in the Interiors Inspection section.</textarea></div>
+      </div>
+
+      <!-- e) Technical Spaces -->
+      <div class="applicable-row"><input type="checkbox" id="s1-technical-cb" onchange="toggleAppl('s1-technical-fields',this)"><label for="s1-technical-cb">e) Technical Spaces</label></div>
+      <div class="fields-wrap disabled" id="s1-technical-fields">
+        <div class="fl"><textarea id="s1-technical" rows="4">[TEXT TO BE CUSTOMIZED] Progress across technical spaces and engineering areas reflects the vessel's current stage of construction. Mechanical, electrical, and systems installation activities are ongoing, with commissioning procedures commencing progressively. Further details are available in the Construction Log section.</textarea></div>
+      </div>
+
+      <!-- f) Painting -->
+      <div class="applicable-row"><input type="checkbox" id="s1-painting-cb" onchange="toggleAppl('s1-painting-fields',this)"><label for="s1-painting-cb">f) Painting</label></div>
+      <div class="fields-wrap disabled" id="s1-painting-fields">
+        <div class="fl"><textarea id="s1-painting" rows="5">[TEXT TO BE CUSTOMIZED] Final or near-final coating applications have been applied to the majority of external surfaces, with localized paint rectification ongoing in selected areas. [Alternatively: Final inspection confirmed the hull and superstructure paint finish is compliant with contractual requirements. Instrumental readings for gloss, DOI, and surface quality were within specification. Minor cosmetic defects were identified and will be corrected through spot repair and polishing.] Further details are available in the Paint Inspection section.</textarea></div>
+      </div>
+
+      <!-- g) Change Orders -->
+      <div class="applicable-row"><input type="checkbox" id="s1-co-cb" onchange="toggleAppl('s1-co-fields',this)"><label for="s1-co-cb">g) Change Orders</label></div>
+      <div class="fields-wrap disabled" id="s1-co-fields">
+        <div class="fl"><textarea id="s1-co" rows="3">[TEXT TO BE CUSTOMIZED] A number of change orders have been reviewed and are being processed in line with the construction contract. Full details are documented in the Change Orders section.</textarea></div>
+      </div>
+
+      <!-- h) Crew -->
+      <div class="applicable-row"><input type="checkbox" id="s1-crew-cb" onchange="toggleAppl('s1-crew-fields',this)"><label for="s1-crew-cb">h) Crew</label></div>
+      <div class="fields-wrap disabled" id="s1-crew-fields">
+        <div class="fl"><textarea id="s1-crew" rows="3">[TEXT TO BE CUSTOMIZED] During the month of [Month], [Crew Member Name] joined the vessel onboard as [Position/Role]. NauticALL was available to assist and coordinate as needed to ensure a smooth integration of the crew during this phase of the build.</textarea></div>
+      </div>
+
+      <!-- Site visits -->
+      <div class="g2" style="margin-top:12px;">
         <div class="fl"><label>Last Site Visit</label><input type="date" id="last-visit"></div>
         <div class="fl"><label>Next Site Visit Planned</label><input type="date" id="next-visit"></div>
       </div>
@@ -35207,6 +35329,7 @@ async function generateDOCX() {
         }),
       ],
     }),
+    emptyPara(),
     coverPara("NEW BUILD MANAGEMENT REPORT", { color:"5B7E95", size:22, spacing_chars: 80, spacing:{before:200,after:120} }),
     // gold rule
     new Paragraph({
@@ -35295,7 +35418,7 @@ async function generateDOCX() {
   const letterChildren = [
     para("Dear " + (ownerName||'[Owner Name]') + ",", { size:24, spacing:_ls }),
     emptyPara(),
-    ...letterText.split('\n\n').map(t => para(t, { size:24, spacing:_ls })),
+    ...letterText.split('\n\n').map(t => para(t, { size:24, spacing:_ls, align:AlignmentType.BOTH })),
     emptyPara(), emptyPara(), emptyPara(),
     para("Sincerely,", { size:24, spacing:{before:0,after:0} }),
     para(nbmName||'New Build Manager', { bold:true, color:NAVY, size:24, spacing:{before:0,after:0} }),
@@ -35359,7 +35482,7 @@ async function generateDOCX() {
   // Converts a plain-text paragraph into a Paragraph with inline InternalHyperlinks
   // for any section name found in the text (longest match first to avoid partial matches).
   function buildLinkedPara(text, opts={}) {
-    const { size=20, spacing={before:60,after:60} } = opts;
+    const { size=20, spacing={before:60,after:60}, align=AlignmentType.LEFT } = opts;
     const linkMap = [
       { phrase: "Production Schedule & Milestones",  anchor: "sec2" },
       { phrase: "Production Schedule",               anchor: "sec2" },
@@ -35385,7 +35508,7 @@ async function generateDOCX() {
       }
       return new TextRun({ text: part, size, font: "Calibri", color: "1a1a2e" });
     });
-    return new Paragraph({ spacing, children });
+    return new Paragraph({ alignment: align, spacing, children });
   }
 
   const s1Children = [
@@ -35394,21 +35517,31 @@ async function generateDOCX() {
     emptyPara(),
   ];
 
-  // Render each summary paragraph with inline hyperlinks on section names
-  s1Children.push(para("[STANDARD TEXT — TO BE CUSTOMIZED]", { size:24, bold:true, spacing:{before:0,after:0} }));
-  s1Children.push(emptyPara());
-  s1Children.push(emptyPara());
-  const summaryRaw = v('exec-summary') || 'The vessel is progressing satisfactorily.';
-  summaryRaw.split(/\n\n+/).map(t => t.trim()).filter(Boolean).forEach(t => {
-    s1Children.push(buildLinkedPara(t, { size:24, spacing:{before:60,after:60} }));
-  });
+  // Subsections — each rendered only if its checkbox is ticked
+  const _s1Subs = [
+    { cb: 's1-overall-cb',  id: 's1-overall',  label: 'Overall Status' },
+    { cb: 's1-hull-cb',     id: 's1-hull',     label: 'Hull & Superstructure' },
+    { cb: 's1-exterior-cb', id: 's1-exterior', label: 'Exterior' },
+    { cb: 's1-interior-cb', id: 's1-interior', label: 'Interior' },
+    { cb: 's1-technical-cb',id: 's1-technical',label: 'Technical Spaces' },
+    { cb: 's1-painting-cb', id: 's1-painting', label: 'Painting' },
+    { cb: 's1-co-cb',       id: 's1-co',       label: 'Change Orders' },
+    { cb: 's1-crew-cb',     id: 's1-crew',     label: 'Crew' },
+  ];
+  const _paraOpts = { size:24, align:AlignmentType.BOTH, spacing:{before:60,after:60,line:276,lineRule:'auto'} };
 
-  // Crew notes — inline, right after the summary paragraphs (only if checkbox ticked)
-  const crewNotes = v('crew-notes');
-  const crewIncluded = document.getElementById('crew-cb') && document.getElementById('crew-cb').checked;
-  if (crewIncluded && crewNotes && crewNotes.trim()) {
-    s1Children.push(buildLinkedPara(crewNotes, { size:24, spacing:{before:60,after:60} }));
-  }
+  _s1Subs.forEach(sub => {
+    const cbEl = document.getElementById(sub.cb);
+    if (!cbEl || !cbEl.checked) return;
+    const text = v(sub.id);
+    if (!text || !text.trim()) return;
+    // Subheading
+    s1Children.push(para(sub.label, { bold:true, color:NAVY, size:24, spacing:{before:180,after:60} }));
+    // Body paragraphs with auto-links
+    text.split(/\n\n+/).map(t => t.trim()).filter(Boolean).forEach(t => {
+      s1Children.push(buildLinkedPara(t, _paraOpts));
+    });
+  });
 
   if (v('last-visit')||v('next-visit')) {
     s1Children.push(emptyPara());
@@ -35513,7 +35646,6 @@ async function generateDOCX() {
     if (hasPhotos) {
       const imgWmm = 170 / cols;
       const imgW = imgWmm / 25.4 * 914400; // EMU via inches
-      const imgH = Math.round(imgW * 0.72);
 
       for (let r=0; r<rows; r++) {
         const rowCells = [];
@@ -35524,6 +35656,15 @@ async function generateDOCX() {
             const imgBytes = await fileToUint8(mediaFiles[idx].file);
             const ext = mediaFiles[idx].file.name.split('.').pop().toLowerCase();
             const imgType = ext==='jpg'||ext==='jpeg' ? 'jpg' : 'png';
+            // Read natural dimensions to preserve actual aspect ratio
+            const naturalDims = await new Promise(resolve => {
+              const _im = new Image();
+              _im.onload = () => resolve({ w: _im.naturalWidth, h: _im.naturalHeight });
+              _im.onerror = () => resolve({ w: 4, h: 3 });
+              _im.src = mediaFiles[idx].url;
+            });
+            const _dispW = Math.round(imgW / 9525);
+            const _dispH = Math.round(_dispW * naturalDims.h / naturalDims.w);
             cellChildren.push(new Paragraph({
               alignment: AlignmentType.CENTER,
               spacing:{before:40,after:20},
@@ -35531,7 +35672,7 @@ async function generateDOCX() {
                 new ImageRun({
                   type: imgType,
                   data: imgBytes,
-                  transformation: { width: imgW/9525, height: imgH/9525 },
+                  transformation: { width: _dispW, height: _dispH },
                 }),
               ],
             }));
@@ -35679,7 +35820,7 @@ async function generateDOCX() {
     if (v('paint-findings')) {
       s4Children.push(emptyPara());
       s4Children.push(para("Findings & open items:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
-      s4Children.push(para(v('paint-findings'), { size:24, spacing:{before:0,after:80} }));
+      s4Children.push(para(v('paint-findings'), { size:24, align:AlignmentType.BOTH, spacing:{before:0,after:80} }));
     }
 
     const paintPreviewEl = document.getElementById('paint-annex-preview');
@@ -35687,11 +35828,11 @@ async function generateDOCX() {
     const paintAnnex = document.getElementById('paint-annex-text')?.value||'';
     if (paintAnnexHtml) {
       s4Children.push(emptyPara());
-      s4Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
+      s4Children.push(para("Surveyor Report Annex — continued on following pages:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
       s4Children.push(...(await htmlToDocxChildren(paintAnnexHtml)));
     } else if (paintAnnex) {
       s4Children.push(emptyPara());
-      s4Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
+      s4Children.push(para("Surveyor Report Annex — continued on following pages:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
       s4Children.push(para(paintAnnex, { size:24, spacing:{before:0,after:80} }));
     }
 
@@ -35723,7 +35864,7 @@ async function generateDOCX() {
     if (v('int-findings')) {
       s5Children.push(emptyPara());
       s5Children.push(para("Findings & open items:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
-      s5Children.push(para(v('int-findings'), { size:24, spacing:{before:0,after:80} }));
+      s5Children.push(para(v('int-findings'), { size:24, align:AlignmentType.BOTH, spacing:{before:0,after:80} }));
     }
 
     const intPreviewEl = document.getElementById('int-annex-preview');
@@ -35731,11 +35872,11 @@ async function generateDOCX() {
     const intAnnex = document.getElementById('int-annex-text')?.value||'';
     if (intAnnexHtml) {
       s5Children.push(emptyPara());
-      s5Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
+      s5Children.push(para("Surveyor Report Annex — continued on following pages:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
       s5Children.push(...(await htmlToDocxChildren(intAnnexHtml)));
     } else if (intAnnex) {
       s5Children.push(emptyPara());
-      s5Children.push(para("Surveyor Report — Annex:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
+      s5Children.push(para("Surveyor Report Annex — continued on following pages:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
       s5Children.push(para(intAnnex, { size:24, spacing:{before:0,after:80} }));
     }
 
@@ -36005,7 +36146,7 @@ async function generateDOCX() {
 
   const month  = v('sel-month') || 'report';
   const vessel = v('vessel-name') || v('vessel-builder') || 'vessel';
-  const filename = 'NauticALL_NewBuild_Report_' + vessel.replace(/[^a-z0-9]/gi,'_') + '_' + month + '.docx';
+  const filename = 'NauticALL NBM Report ' + vessel.trim() + ' ' + month + '.docx';
 
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
