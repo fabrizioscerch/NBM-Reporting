@@ -35329,7 +35329,14 @@ async function generateDOCX() {
         }),
       ],
     }),
-    emptyPara(),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 60, after: 60 },
+      border: {
+        bottom: { style: BorderStyle.SINGLE, size: 4, color: "5B7E95", space: 1 },
+      },
+      children: [ new TextRun({ text: " ", size: 5 }) ],
+    }),
     coverPara("NEW BUILD MANAGEMENT REPORT", { color:"5B7E95", size:22, spacing_chars: 80, spacing:{before:200,after:120} }),
     // gold rule
     new Paragraph({
@@ -35603,7 +35610,7 @@ async function generateDOCX() {
       s2Children.push(emptyPara());
       const _schedParas = (v('schedule-text')||'').split(/\n\n+/).map(t=>t.trim()).filter(Boolean);
       _schedParas.forEach((_sp, _si) => {
-        s2Children.push(para(_sp, { size:24, spacing:{before:0,after:0} }));
+        s2Children.push(para(_sp, { size:24, align:AlignmentType.BOTH, spacing:{before:0,after:0} }));
         if (_si === 0) { s2Children.push(emptyPara()); s2Children.push(emptyPara()); }
       });
   }
