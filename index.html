@@ -35693,19 +35693,18 @@ async function generateDOCX() {
       const imgWmm = 170 / cols;
       const imgW = imgWmm / 25.4 * 914400; // EMU via inches
 
-      // Photo layout: 3-col table per pair [photo | gap | photo] + caption row
-      // Photos sized to fit cell interior. Canvas→JPEG via toDataURL then toBlob fallback.
+      // Photo layout: 3-col [photo | gap | photo], single row per pair
+      // Each photo cell contains image + navy caption paragraph (keeps them together)
       const blueBorder = { style: BorderStyle.SINGLE, size: 18, color: '5B7E96' };
       const GAP_MM = 8;
       const gapDxa = mm2dxa(GAP_MM);
-      const photoCellW = Math.floor((9500 - gapDxa) / 2); // width per photo column
-      const photoMM = photoCellW / 56.7;                  // mm
-      const photoPx = Math.round(photoMM / 25.4 * 96);    // display px at 96 dpi
+      const photoCellW = Math.floor((9500 - gapDxa) / 2);
+      const photoMM = photoCellW / 56.7;
+      const photoPx = Math.round(photoMM / 25.4 * 96);
 
-      // Compress one photo to JPEG via canvas; fallback to original bytes
-      async function photoToJpeg(mf, photoRot) {
-        const colPx = photoPx;
-        const SCALE = 2;
+      // Resize photo via canvas — accepts JPEG or PNG output (both smaller than original)
+      async function resizePhoto(mf, photoRot) {
+        const dw = photoPx;
         return new Promise((resolve) => {
           const fr = new FileReader();
           fr.onload = (ev) => {
@@ -35716,73 +35715,79 @@ async function generateDOCX() {
               const nh = img.naturalHeight || 3;
               const ew = (photoRot===90||photoRot===270) ? nh : nw;
               const eh = (photoRot===90||photoRot===270) ? nw : nh;
-              const dw = colPx;
               const dh = Math.round(dw * eh / ew);
-              const cw = dw * SCALE, ch = dh * SCALE;
-              try {
-                const cvs = document.createElement('canvas');
-                cvs.width = cw; cvs.height = ch;
-                const ctx = cvs.getContext('2d');
-                if (!ctx) throw new Error('no 2d ctx');
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(0,0,cw,ch);
-                if (photoRot === 0) {
-                  ctx.drawImage(img, 0, 0, cw, ch);
-                } else {
-                  ctx.translate(cw/2, ch/2);
-                  ctx.rotate(photoRot * Math.PI / 180);
-                  if (photoRot===90||photoRot===270) ctx.drawImage(img,-ch/2,-cw/2,ch,cw);
-                  else ctx.drawImage(img,-cw/2,-ch/2,cw,ch);
-                }
-                // Try toDataURL first
-                const jpgUrl = cvs.toDataURL('image/jpeg', 0.85);
-                if (jpgUrl && jpgUrl.startsWith('data:image/jpeg')) {
-                  const b64 = jpgUrl.split(',')[1];
-                  const bin = atob(b64);
-                  const arr = new Uint8Array(bin.length);
-                  for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
-                  resolve({ bytes: arr, dw, dh });
-                  return;
-                }
-                // toDataURL didn't return JPEG - try toBlob
-                cvs.toBlob((blob) => {
-                  if (!blob) { useFallback(); return; }
-                  const fr2 = new FileReader();
-                  fr2.onload = (e2) => {
-                    const u = e2.target.result;
-                    if (u && u.startsWith('data:image/jpeg')) {
+              const cw = dw * 2, ch = dh * 2;  // 2× for ~192dpi
+
+              function tryCanvas() {
+                try {
+                  const cvs = document.createElement('canvas');
+                  cvs.width = cw; cvs.height = ch;
+                  const ctx = cvs.getContext('2d');
+                  if (!ctx) return false;
+                  ctx.fillStyle = '#ffffff';
+                  ctx.fillRect(0, 0, cw, ch);
+                  if (photoRot === 0) {
+                    ctx.drawImage(img, 0, 0, cw, ch);
+                  } else {
+                    ctx.translate(cw/2, ch/2);
+                    ctx.rotate(photoRot * Math.PI / 180);
+                    if (photoRot===90||photoRot===270) ctx.drawImage(img,-ch/2,-cw/2,ch,cw);
+                    else ctx.drawImage(img,-cw/2,-ch/2,cw,ch);
+                  }
+                  // Accept JPEG or PNG — both are smaller than original at resized dims
+                  const jpgUrl = cvs.toDataURL('image/jpeg', 0.85);
+                  if (jpgUrl && jpgUrl.length > 100 && !jpgUrl.startsWith('data:,')) {
+                    const isJpeg = jpgUrl.startsWith('data:image/jpeg');
+                    const b64 = jpgUrl.split(',')[1];
+                    if (!b64) return false;
+                    const bin = atob(b64);
+                    const arr = new Uint8Array(bin.length);
+                    for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+                    resolve({ bytes: arr, dw, dh, type: isJpeg ? 'jpg' : 'png' });
+                    return true;
+                  }
+                  // Try toBlob
+                  cvs.toBlob((blob) => {
+                    if (!blob || blob.size < 100) { resolve(null); return; }
+                    const fr2 = new FileReader();
+                    fr2.onload = (e2) => {
+                      const u = e2.target.result;
+                      if (!u || u.length < 100) { resolve(null); return; }
+                      const isJpeg = u.startsWith('data:image/jpeg');
                       const b64 = u.split(',')[1];
                       const bin = atob(b64);
                       const arr = new Uint8Array(bin.length);
                       for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
-                      resolve({ bytes: arr, dw, dh });
-                    } else { useFallback(); }
-                  };
-                  fr2.onerror = useFallback;
-                  fr2.readAsDataURL(blob);
-                }, 'image/jpeg', 0.85);
-              } catch(e) { useFallback(); }
+                      resolve({ bytes: arr, dw, dh, type: isJpeg ? 'jpg' : 'png' });
+                    };
+                    fr2.onerror = () => resolve(null);
+                    fr2.readAsDataURL(blob);
+                  }, 'image/jpeg', 0.85);
+                  return true;  // toBlob is async, will resolve later
+                } catch(e) { return false; }
+              }
 
-              function useFallback() {
+              if (!tryCanvas()) {
+                // Canvas completely failed — embed original bytes at display size
                 const b64 = dataUrl.split(',')[1] || '';
                 const bin = atob(b64);
                 const arr = new Uint8Array(bin.length);
                 for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
-                resolve({ bytes: arr, dw, dh });
+                const t = dataUrl.startsWith('data:image/jpeg') ? 'jpg' : 'png';
+                resolve({ bytes: arr, dw, dh, type: t });
               }
             };
-            img.onerror = () => resolve({ bytes: new Uint8Array(0), dw: colPx, dh: colPx });
+            img.onerror = () => resolve(null);
             img.src = dataUrl;
           };
-          fr.onerror = () => resolve({ bytes: new Uint8Array(0), dw: photoPx, dh: photoPx });
+          fr.onerror = () => resolve(null);
           if (mf && mf.file) fr.readAsDataURL(mf.file);
-          else resolve({ bytes: new Uint8Array(0), dw: photoPx, dh: photoPx });
+          else resolve(null);
         });
       }
 
       for (let r=0; r<rows; r++) {
-        const imgCells = [];
-        const capCells = [];
+        const rowCells = [];
 
         for (let ci=0; ci<cols; ci++) {
           const idx = r*cols+ci;
@@ -35790,14 +35795,8 @@ async function generateDOCX() {
           const hasPh = !!(mf && mf.url);
 
           if (ci === 1) {
-            // Insert gap spacer column between the two photos
-            imgCells.push(new TableCell({
-              width: { size: gapDxa, type: WidthType.DXA },
-              borders: noBorders,
-              margins:{top:0,bottom:0,left:0,right:0},
-              children: [emptyPara()],
-            }));
-            capCells.push(new TableCell({
+            // 8mm gap column
+            rowCells.push(new TableCell({
               width: { size: gapDxa, type: WidthType.DXA },
               borders: noBorders,
               margins:{top:0,bottom:0,left:0,right:0},
@@ -35805,37 +35804,35 @@ async function generateDOCX() {
             }));
           }
 
-          let imgPara = emptyPara();
+          const cellChildren = [];
           if (hasPh) {
-            const { bytes: imgBytes, dw: _dw, dh: _dh } = await photoToJpeg(mf, mf.rotation||0);
-            if (imgBytes.length > 0) {
-              imgPara = new Paragraph({
+            const result = await resizePhoto(mf, mf.rotation||0);
+            if (result && result.bytes.length > 0) {
+              cellChildren.push(new Paragraph({
                 alignment: AlignmentType.CENTER,
                 spacing:{before:0,after:0},
-                children:[new ImageRun({ type:'jpg', data: imgBytes, transformation:{ width:_dw, height:_dh } })],
-              });
+                children:[new ImageRun({ type: result.type, data: result.bytes,
+                  transformation:{ width: result.dw, height: result.dh } })],
+              }));
+            } else {
+              cellChildren.push(emptyPara());
             }
+            // Navy caption paragraph inside same cell — stays with image
+            const capEl = document.getElementById('cap-'+idx);
+            const capText = capEl ? capEl.value.trim() : '';
+            cellChildren.push(new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing:{before:60,after:60},
+              shading:{ fill:'1c3548', type:ShadingType.CLEAR, color:'1c3548' },
+              children:[new TextRun({ text:capText||'', color:'FFFFFF', size:16, font:'Calibri' })],
+            }));
           }
 
-          imgCells.push(new TableCell({
+          rowCells.push(new TableCell({
             width: { size: photoCellW, type: WidthType.DXA },
-            borders: hasPh ? { top:blueBorder,left:blueBorder,right:blueBorder,bottom:noBorder } : noBorders,
+            borders: hasPh ? { top:blueBorder,left:blueBorder,right:blueBorder,bottom:blueBorder } : noBorders,
             margins:{top:0,bottom:0,left:0,right:0},
-            children: [imgPara],
-          }));
-
-          const capEl = document.getElementById('cap-'+idx);
-          const capText = capEl ? capEl.value.trim() : '';
-          capCells.push(new TableCell({
-            width: { size: photoCellW, type: WidthType.DXA },
-            borders: hasPh ? { top:noBorder,left:blueBorder,right:blueBorder,bottom:blueBorder } : noBorders,
-            shading: hasPh ? { fill:'1c3548', type:ShadingType.CLEAR, color:'1c3548' } : undefined,
-            margins:{top: hasPh?40:0, bottom: hasPh?40:0, left: hasPh?60:0, right: hasPh?60:0},
-            children:[new Paragraph({
-              alignment:AlignmentType.CENTER,
-              spacing:{before:0,after:0},
-              children: hasPh ? [new TextRun({ text:capText||'', color:'FFFFFF', size:16, font:'Calibri' })] : [],
-            })],
+            children: hasPh ? cellChildren : [emptyPara()],
           }));
         }
 
@@ -35843,10 +35840,7 @@ async function generateDOCX() {
           width:{ size:9500, type:WidthType.DXA },
           columnWidths: [photoCellW, gapDxa, photoCellW],
           borders: noBorders,
-          rows:[
-            new TableRow({ children: imgCells, cantSplit: true }),
-            new TableRow({ children: capCells, cantSplit: true }),
-          ],
+          rows:[ new TableRow({ children: rowCells, cantSplit: true }) ],
         }));
         s6Children.push(emptyPara());
       }
