@@ -33958,24 +33958,32 @@ function rebuildMedia(){
     // Drop target on every slot
     slot.addEventListener('dragover',e=>{
       e.preventDefault();
-      e.dataTransfer.dropEffect='move';
+      e.dataTransfer.dropEffect=(e.dataTransfer.files&&e.dataTransfer.types&&e.dataTransfer.types.includes('Files'))?'copy':'move';
       slot.style.outline='2px dashed #5B7E95';
     });
     slot.addEventListener('dragleave',()=>{ slot.style.outline=''; });
     slot.addEventListener('drop',e=>{
       e.preventDefault();
       slot.style.outline='';
+      // External file drop from file system
+      if(dragSrcIdx===null && e.dataTransfer.files && e.dataTransfer.files.length>0){
+        const f=e.dataTransfer.files[0];
+        if(f.type.startsWith('image/')){
+          if(mediaFiles[i]&&mediaFiles[i].url) URL.revokeObjectURL(mediaFiles[i].url);
+          mediaFiles[i]={file:f,url:URL.createObjectURL(f),caption:'',rotation:0};
+          rebuildMedia();
+        }
+        return;
+      }
       if(dragSrcIdx===null||dragSrcIdx===i) return;
-      // Swap captions too
+      // Slot-to-slot reorder
       const srcCap=document.getElementById('cap-'+dragSrcIdx);
       const dstCap=document.getElementById('cap-'+i);
       const tmpCapVal=srcCap?srcCap.value:'';
-      // Swap file entries
       const tmp=mediaFiles[dragSrcIdx];
       if(mediaFiles[i]) mediaFiles[dragSrcIdx]=mediaFiles[i];
       else delete mediaFiles[dragSrcIdx];
       mediaFiles[i]=tmp;
-      // Carry caption value
       if(mediaFiles[i]) mediaFiles[i].caption=tmpCapVal;
       if(mediaFiles[dragSrcIdx]) mediaFiles[dragSrcIdx].caption=dstCap?dstCap.value:'';
       dragSrcIdx=null;
@@ -34841,14 +34849,33 @@ async function generateDOCX() {
         const offsetPx = Math.max(0, (pageContentHpx - dh) / 2);
         spacingBefore = Math.round(offsetPx * 15); // 1px ≈ 15 dxa
       }
-      const bytes = dataUriToBytes(src);
+      // Resample to display size via canvas → JPEG 85% to keep DOCX small
+      const bytes = await new Promise(res2 => {
+        const _ai = new Image();
+        _ai.onload = () => {
+          const _ac = document.createElement('canvas');
+          _ac.width = dw; _ac.height = dh;
+          const _actx = _ac.getContext('2d');
+          _actx.fillStyle = '#ffffff';
+          _actx.fillRect(0, 0, dw, dh);
+          _actx.drawImage(_ai, 0, 0, dw, dh);
+          const _au = _ac.toDataURL('image/jpeg', 0.85);
+          const _ab64 = _au.split(',')[1];
+          const _abin = atob(_ab64);
+          const _aarr = new Uint8Array(_abin.length);
+          for (let _ai2=0; _ai2<_abin.length; _ai2++) _aarr[_ai2] = _abin.charCodeAt(_ai2);
+          res2(_aarr);
+        };
+        _ai.onerror = () => res2(dataUriToBytes(src)); // fallback: embed original
+        _ai.src = src;
+      });
       return new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { before: spacingBefore, after: 0 },
         pageBreakBefore: !!opts.pageBreakBefore,
         children: [
           new ImageRun({
-            type: dataUriType(src),
+            type: 'jpg',
             data: bytes,
             transformation: { width: dw, height: dh },
           }),
@@ -35638,25 +35665,27 @@ async function generateDOCX() {
         img.src = URL.createObjectURL(_gf);
       }).catch(() => null);
       if (ganttImgEl) {
+        // Calculate display size first, then draw to canvas at that size → JPEG 85%
+        const targetWpx = 640;
+        const maxHpx = 900;
+        let ganttW = targetWpx;
+        let ganttH = Math.round(targetWpx * ganttImgEl.naturalHeight / ganttImgEl.naturalWidth);
+        if (ganttH > maxHpx) { ganttW = Math.round(ganttW * maxHpx / ganttH); ganttH = maxHpx; }
         const cvs = document.createElement('canvas');
-        cvs.width  = ganttImgEl.naturalWidth;
-        cvs.height = ganttImgEl.naturalHeight;
+        cvs.width = ganttW; cvs.height = ganttH;
         const cctx = cvs.getContext('2d');
-        cctx.drawImage(ganttImgEl, 0, 0);
-        const dataUrl = cvs.toDataURL('image/png');
+        cctx.fillStyle = '#ffffff';
+        cctx.fillRect(0, 0, ganttW, ganttH);
+        cctx.drawImage(ganttImgEl, 0, 0, ganttW, ganttH);
+        const dataUrl = cvs.toDataURL('image/jpeg', 0.85);
         const b64 = dataUrl.split(',')[1];
         const bin = atob(b64);
         const ganttBytes = new Uint8Array(bin.length);
         for (let i=0; i<bin.length; i++) ganttBytes[i] = bin.charCodeAt(i);
-        const targetWpx = 640;
-        let ganttW = targetWpx;
-        let ganttH = Math.round(targetWpx * (cvs.height / cvs.width));
-        const maxHpx = 900;
-        if (ganttH > maxHpx) { ganttW = Math.round(ganttW * maxHpx / ganttH); ganttH = maxHpx; }
         s2Children.push(new Paragraph({
           alignment: AlignmentType.CENTER,
           spacing: { before: 40, after: 20 },
-          children: [ new ImageRun({ type: 'png', data: ganttBytes, transformation: { width: ganttW, height: ganttH } }) ],
+          children: [ new ImageRun({ type: 'jpg', data: ganttBytes, transformation: { width: ganttW, height: ganttH } }) ],
         }));
         if (_gi < ganttFiles.length - 1) s2Children.push(emptyPara());
       }
@@ -35715,44 +35744,35 @@ async function generateDOCX() {
           const idx = r*cols+c;
           const cellChildren = [];
           if (mediaFiles[idx]) {
-            // 1. Read natural dims (browser applies EXIF correction)
-            const naturalDims = await new Promise(resolve => {
-              const _im = new Image();
-              _im.onload = () => resolve({ w: _im.naturalWidth, h: _im.naturalHeight });
-              _im.onerror = () => resolve({ w: 4, h: 3 });
-              _im.src = mediaFiles[idx].url;
-            });
-            // 2. Apply user rotation: swap effective dims for 90°/270°
+            // Single image load: measure dims, resample + rotate → JPEG 85%
             const _photoRot = mediaFiles[idx].rotation || 0;
-            const _effW = (_photoRot===90||_photoRot===270) ? naturalDims.h : naturalDims.w;
-            const _effH = (_photoRot===90||_photoRot===270) ? naturalDims.w : naturalDims.h;
-            // 3. Calculate display size (portrait cap if effective h > w)
-            let _dispW = Math.round(imgW / 9525);
-            let _dispH = Math.round(_dispW * _effH / _effW);
-            if (_effH > _effW) {
-              const _maxH = Math.floor(((257 - 30 - rows * 10) / rows) / 25.4 * 96);
-              if (_dispH > _maxH) { _dispH = _maxH; _dispW = Math.round(_maxH * _effW / _effH); }
-            }
-            // 4. Resample + rotate via canvas → JPEG 85%
-            const imgType = 'jpg';
-            const imgBytes = await new Promise(resolve => {
-              const cvs = document.createElement('canvas');
-              cvs.width = _dispW; cvs.height = _dispH;
-              const ctx2 = cvs.getContext('2d');
-              ctx2.fillStyle = '#ffffff';
-              ctx2.fillRect(0, 0, _dispW, _dispH);
+            const _colPx = Math.round(imgW / 9525); // column width in px
+            const _maxHpx = Math.floor(((257 - 30 - rows * 10) / rows) / 25.4 * 96);
+            const { bytes: imgBytes, dw: _dispW, dh: _dispH } = await new Promise((res, rej) => {
               const _img2 = new Image();
               _img2.onload = () => {
+                const nw = _img2.naturalWidth  || 4;
+                const nh = _img2.naturalHeight || 3;
+                // Effective dims after rotation
+                const ew = (_photoRot===90||_photoRot===270) ? nh : nw;
+                const eh = (_photoRot===90||_photoRot===270) ? nw : nh;
+                let dw = _colPx;
+                let dh = Math.round(dw * eh / ew);
+                if (eh > ew && dh > _maxHpx) { dh = _maxHpx; dw = Math.round(_maxHpx * ew / eh); }
+                const cvs = document.createElement('canvas');
+                cvs.width = dw; cvs.height = dh;
+                const ctx2 = cvs.getContext('2d');
+                ctx2.fillStyle = '#ffffff';
+                ctx2.fillRect(0, 0, dw, dh);
                 if (_photoRot === 0) {
-                  ctx2.drawImage(_img2, 0, 0, _dispW, _dispH);
+                  ctx2.drawImage(_img2, 0, 0, dw, dh);
                 } else {
-                  ctx2.translate(_dispW/2, _dispH/2);
+                  ctx2.translate(dw/2, dh/2);
                   ctx2.rotate(_photoRot * Math.PI / 180);
                   if (_photoRot === 90 || _photoRot === 270) {
-                    // Pre-rotation image occupies _dispH × _dispW in rotated space
-                    ctx2.drawImage(_img2, -_dispH/2, -_dispW/2, _dispH, _dispW);
-                  } else { // 180°
-                    ctx2.drawImage(_img2, -_dispW/2, -_dispH/2, _dispW, _dispH);
+                    ctx2.drawImage(_img2, -dh/2, -dw/2, dh, dw);
+                  } else {
+                    ctx2.drawImage(_img2, -dw/2, -dh/2, dw, dh);
                   }
                 }
                 const dataUrl = cvs.toDataURL('image/jpeg', 0.85);
@@ -35760,10 +35780,12 @@ async function generateDOCX() {
                 const bin = atob(b64);
                 const arr = new Uint8Array(bin.length);
                 for (let bi=0; bi<bin.length; bi++) arr[bi] = bin.charCodeAt(bi);
-                resolve(arr);
+                res({ bytes: arr, dw, dh });
               };
+              _img2.onerror = () => rej(new Error('photo load failed'));
               _img2.src = mediaFiles[idx].url;
             });
+            const imgType = 'jpg';
             cellChildren.push(new Paragraph({
               alignment: AlignmentType.CENTER,
               spacing:{before:40,after:20},
