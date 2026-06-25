@@ -26098,7 +26098,7 @@ MAX: 9026 };
 	*   name: "Custom Heading",
 	*   basedOn: "Normal",
 	*   paragraph: {
-	*     spacing: { before: 240, after: 120 },
+	*     spacing: { before: 160, after: 80 },
 	*     alignment: AlignmentType.LEFT
 	*   },
 	*   run: {
@@ -34628,7 +34628,7 @@ function sectionHeadingPara(titleText, docxLib) {
       }),
     ],
     shading: { fill: "1C3548", type: ShadingType.CLEAR, color: "auto" },
-    spacing: { before: 240, after: 120 },
+    spacing: { before: 160, after: 80 },
     indent: { left: 200, right: 200 },
   });
 }
@@ -35619,24 +35619,43 @@ async function generateDOCX() {
         img.src = URL.createObjectURL(_gf);
       }).catch(() => null);
       if (ganttImgEl) {
-        // Display dims: 640px wide max
-        const targetWpx = 640;
-        const maxHpx = 900;
-        let ganttW = targetWpx;
-        let ganttH = Math.round(targetWpx * ganttImgEl.naturalHeight / ganttImgEl.naturalWidth);
-        if (ganttH > maxHpx) { ganttW = Math.round(ganttW * maxHpx / ganttH); ganttH = maxHpx; }
-        // Canvas at 2× for print quality
-        const cvs = document.createElement('canvas');
-        cvs.width = ganttW * 2; cvs.height = ganttH * 2;
-        const cctx = cvs.getContext('2d');
-        cctx.fillStyle = '#ffffff';
-        cctx.fillRect(0, 0, cvs.width, cvs.height);
-        cctx.drawImage(ganttImgEl, 0, 0, cvs.width, cvs.height);
-        const dataUrl = cvs.toDataURL('image/jpeg', 0.85);
-        const b64 = dataUrl.split(',')[1];
-        const bin = atob(b64);
-        const ganttBytes = new Uint8Array(bin.length);
-        for (let i=0; i<bin.length; i++) ganttBytes[i] = bin.charCodeAt(i);
+        // Display dims: full page width = 170mm
+        const ganttW = Math.round(170 / 25.4 * 96); // ~643px
+        const ganttH = Math.round(ganttW * ganttImgEl.naturalHeight / ganttImgEl.naturalWidth);
+        const _gScale = 4; // 4× for print quality
+        const _gcw = ganttW * _gScale;
+        const _gch = ganttH * _gScale;
+        let ganttBytes = null;
+        // Try OffscreenCanvas first (no taint, works on Safari file://)
+        if (typeof OffscreenCanvas !== 'undefined' && typeof createImageBitmap !== 'undefined') {
+          try {
+            const _bitmap = await createImageBitmap(ganttImgEl);
+            const _offscreen = new OffscreenCanvas(_gcw, _gch);
+            const _octx = _offscreen.getContext('2d');
+            _octx.fillStyle = '#ffffff';
+            _octx.fillRect(0, 0, _gcw, _gch);
+            _octx.drawImage(_bitmap, 0, 0, _gcw, _gch);
+            _bitmap.close();
+            const _gblob = await _offscreen.convertToBlob({ type: 'image/jpeg', quality: 0.92 });
+            if (_gblob && _gblob.size > 100) {
+              ganttBytes = new Uint8Array(await _gblob.arrayBuffer());
+            }
+          } catch(_e) { /* fall through */ }
+        }
+        if (!ganttBytes) {
+          // Fallback: regular canvas
+          const cvs = document.createElement('canvas');
+          cvs.width = _gcw; cvs.height = _gch;
+          const cctx = cvs.getContext('2d');
+          cctx.fillStyle = '#ffffff';
+          cctx.fillRect(0, 0, _gcw, _gch);
+          cctx.drawImage(ganttImgEl, 0, 0, _gcw, _gch);
+          const dataUrl = cvs.toDataURL('image/jpeg', 0.92);
+          const b64 = dataUrl.split(',')[1];
+          const bin = atob(b64);
+          ganttBytes = new Uint8Array(bin.length);
+          for (let i=0; i<bin.length; i++) ganttBytes[i] = bin.charCodeAt(i);
+        }
         s2Children.push(new Paragraph({
           alignment: AlignmentType.CENTER,
           spacing: { before: 40, after: 20 },
@@ -35704,8 +35723,41 @@ async function generateDOCX() {
 
       // Resize photo via blob URL (avoids Safari canvas taint with data: URLs)
       async function resizePhoto(mf, photoRot) {
-        const dw = photoPx;
         if (!mf || !mf.file) return null;
+        const dw = photoPx;
+
+        // ── Path 1: OffscreenCanvas + createImageBitmap (no taint, works on Safari file://)
+        if (typeof OffscreenCanvas !== 'undefined' && typeof createImageBitmap !== 'undefined') {
+          try {
+            const bitmap = await createImageBitmap(mf.file);
+            const nw = bitmap.width || 4;
+            const nh = bitmap.height || 3;
+            const ew = (photoRot===90||photoRot===270) ? nh : nw;
+            const eh = (photoRot===90||photoRot===270) ? nw : nh;
+            const dh = Math.round(dw * eh / ew);
+            const cw = dw * 2, ch = dh * 2;
+            const offscreen = new OffscreenCanvas(cw, ch);
+            const ctx = offscreen.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, cw, ch);
+            if (photoRot === 0) {
+              ctx.drawImage(bitmap, 0, 0, cw, ch);
+            } else {
+              ctx.translate(cw/2, ch/2);
+              ctx.rotate(photoRot * Math.PI / 180);
+              if (photoRot===90||photoRot===270) ctx.drawImage(bitmap,-ch/2,-cw/2,ch,cw);
+              else ctx.drawImage(bitmap,-cw/2,-ch/2,cw,ch);
+            }
+            bitmap.close();
+            const blob = await offscreen.convertToBlob({ type: 'image/jpeg', quality: 0.82 });
+            if (blob && blob.size > 100) {
+              const arr = new Uint8Array(await blob.arrayBuffer());
+              return { bytes: arr, dw, dh, type: 'jpg' };
+            }
+          } catch(_e) { /* fall through to canvas path */ }
+        }
+
+        // ── Path 2: Blob URL + regular canvas (works on Chrome/Firefox)
         return new Promise((resolve) => {
           const blobUrl = URL.createObjectURL(mf.file);
           const img = new Image();
@@ -35732,7 +35784,7 @@ async function generateDOCX() {
                 if (photoRot===90||photoRot===270) ctx.drawImage(img,-ch/2,-cw/2,ch,cw);
                 else ctx.drawImage(img,-cw/2,-ch/2,cw,ch);
               }
-              const outUrl = cvs.toDataURL('image/jpeg', 0.85);
+              const outUrl = cvs.toDataURL('image/jpeg', 0.82);
               if (outUrl && outUrl.length > 200 && !outUrl.startsWith('data:,')) {
                 URL.revokeObjectURL(blobUrl);
                 const isJpeg = outUrl.startsWith('data:image/jpeg');
@@ -35742,8 +35794,9 @@ async function generateDOCX() {
                 resolved = true;
                 resolve({ bytes: arr, dw, dh, type: isJpeg?'jpg':'png' });
               }
-            } catch(e) { /* fall through to FileReader */ }
+            } catch(_e) { /* fall through to FileReader */ }
             if (!resolved) {
+              // ── Path 3: FileReader fallback (uncompressed, original file)
               URL.revokeObjectURL(blobUrl);
               const fr = new FileReader();
               fr.onload = ev => {
@@ -35760,8 +35813,7 @@ async function generateDOCX() {
           img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(null); };
           img.src = blobUrl;
         });
-      }
-      for (let r=0; r<rows; r++) {
+      }      for (let r=0; r<rows; r++) {
         const rowCells = [];
 
         for (let ci=0; ci<cols; ci++) {
@@ -35775,7 +35827,8 @@ async function generateDOCX() {
               width: { size: gapDxa, type: WidthType.DXA },
               borders: noBorders,
               margins:{top:0,bottom:0,left:0,right:0},
-              children: [emptyPara()],
+              shading: { fill: 'FFFFFF', type: ShadingType.CLEAR, color: 'FFFFFF' },
+              children: [new Paragraph({ spacing:{ before:0, after:0 } })],
             }));
           }
 
@@ -35807,7 +35860,9 @@ async function generateDOCX() {
             width: { size: photoCellW, type: WidthType.DXA },
             borders: hasPh ? { top:blueBorder,left:blueBorder,right:blueBorder,bottom:blueBorder } : noBorders,
             margins:{top:0,bottom:0,left:0,right:0},
-            children: hasPh ? cellChildren : [emptyPara()],
+            // Empty cells get explicit no-borders shading to suppress any line artifacts
+            shading: hasPh ? undefined : { fill: 'FFFFFF', type: ShadingType.CLEAR, color: 'FFFFFF' },
+            children: hasPh ? cellChildren : [new Paragraph({ spacing:{ before:0, after:0 } })],
           }));
         }
 
@@ -35817,7 +35872,8 @@ async function generateDOCX() {
           borders: noBorders,
           rows:[ new TableRow({ children: rowCells, cantSplit: true }) ],
         }));
-        s6Children.push(emptyPara());
+        // Minimal gap between photo pairs (3pt = ~1mm) — keeps 2 pairs per page
+        s6Children.push(new Paragraph({ spacing: { before: 0, after: 0 } }));
       }
     }
 
