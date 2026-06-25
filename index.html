@@ -33677,10 +33677,18 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
         <tbody id="co-body"></tbody>
       </table>
       <button class="add-btn" onclick="addCO()">+ Add change order</button>
+
+      <div style="margin-top:20px;margin-bottom:8px;font-weight:600;color:#1c3548;font-size:13px;border-top:1px solid #e0e2e6;padding-top:14px;">Credits</div>
+      <table class="data-table">
+        <thead><tr><th style="width:36px">#</th><th>Description</th><th style="width:130px">Amount (€)</th><th style="width:130px">Status</th><th style="width:32px"></th></tr></thead>
+        <tbody id="cr-body"></tbody>
+      </table>
+      <button class="add-btn" onclick="addCR()">+ Add credit</button>
+
       <div class="totals-row">
-        <div class="tot"><div class="tl">Approved total</div><div class="tv" id="tot-approved">€0</div></div>
-        <div class="tot"><div class="tl">Outstanding total</div><div class="tv" id="tot-outstanding">€0</div></div>
-        <div class="tot"><div class="tl">Grand total</div><div class="tv" id="tot-grand">€0</div></div>
+        <div class="tot"><div class="tl">CO total</div><div class="tv" id="tot-co">€0</div></div>
+        <div class="tot"><div class="tl">Credits total</div><div class="tv" id="tot-credits">€0</div></div>
+        <div class="tot"><div class="tl">Net total</div><div class="tv" id="tot-grand">€0</div></div>
       </div>
       <div class="fl" style="margin-top:16px"><label>NauticALL Recommendations <span class="opt">(optional)</span></label><textarea id="co-notes" rows="3" placeholder="[STANDARD TEXT — TO BE CUSTOMIZED] NauticALL has reviewed the outstanding change orders and recommends..."></textarea></div>
       </div>
@@ -33784,7 +33792,7 @@ function toggleAppl(fieldsId, cb){
   f.classList.toggle('disabled', !cb.checked);
 }
 
-let coCount=0;
+let coCount=0, crCount=0;
 function addCO(){
   coCount++;
   const tr = document.createElement('tr');
@@ -33798,6 +33806,19 @@ function addCO(){
   calcTotals();
 }
 
+function addCR(){
+  crCount++;
+  const tr = document.createElement('tr');
+  tr.id='cr-'+crCount;
+  tr.innerHTML=`<td><input type="text" value="${crCount}" style="width:32px;text-align:center"></td>
+    <td><input type="text" placeholder="Description"></td>
+    <td><input type="text" placeholder="0" oninput="calcTotals()"></td>
+    <td><select onchange="calcTotals()"><option value="approved">Approved</option><option value="outstanding">Outstanding</option></select></td>
+    <td><button class="del-btn" onclick="this.closest('tr').remove();calcTotals()">&times;</button></td>`;
+  document.getElementById('cr-body').appendChild(tr);
+  calcTotals();
+}
+
 function getCurrency(){ return document.getElementById('sel-currency')?.value||'€'; }
 function fmtNum(n){ return getCurrency()+Math.round(n).toLocaleString('en-US'); }
 function updateCurrencySymbol(){
@@ -33806,324 +33827,22 @@ function updateCurrencySymbol(){
   calcTotals();
 }
 function calcTotals(){
-  let app=0,out=0;
+  let coTotal=0;
   document.querySelectorAll('#co-body tr').forEach(tr=>{
     const raw=(tr.querySelectorAll('td')[2].querySelector('input').value||'0').replace(/,/g,'').replace(/[€$]/g,'');
     const amt=parseFloat(raw)||0;
     const st=tr.querySelector('select').value;
-    if(st==='approved') app+=amt; else if(st==='outstanding') out+=amt;
+    if(st==='approved'||st==='outstanding') coTotal+=amt;
   });
-  document.getElementById('tot-approved').textContent=fmtNum(app);
-  document.getElementById('tot-outstanding').textContent=fmtNum(out);
-  document.getElementById('tot-grand').textContent=fmtNum(app+out);
-}
-
-let bdmCount=0;
-function addBDM(){
-  bdmCount++;
-  const n=bdmCount;
-  const tr=document.createElement('tr');
-  tr.id='bdm-'+n;
-  tr.innerHTML=`<td style="color:#999;font-size:13px">${n}</td>
-    <td><input type="text" placeholder="Decision required from the owner"></td>
-    <td><input type="date"></td>
-    <td><select><option>High</option><option>Medium</option><option>Low</option></select></td>
-    <td><button class="del-btn" onclick="this.closest('tr').remove()">&times;</button></td>`;
-  document.getElementById('bdm-body').appendChild(tr);
-}
-
-let mediaFiles={};
-function rebuildMedia(){
-  const cols=parseInt(document.getElementById('media-cols').value);
-  const rows=parseInt(document.getElementById('media-rows').value);
-  const total=cols*rows;
-  const grid=document.getElementById('media-grid');
-  grid.style.gridTemplateColumns=`repeat(${cols},1fr)`;
-  grid.style.display='grid';
-  grid.style.gap='12px';
-  grid.innerHTML='';
-  document.getElementById('media-captions').innerHTML='';
-
-  let dragSrcIdx=null;
-
-  for(let i=0;i<total;i++){
-    const cell=document.createElement('div');
-    cell.style.cssText='display:flex;flex-direction:column;gap:6px;';
-
-    const slot=document.createElement('div');
-    slot.className='media-slot';
-    slot.dataset.idx=i;
-
-    if(mediaFiles[i]){
-      // — Filled slot: show image, remove button, enable drag ——
-      const img=document.createElement('img');
-      img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:inherit;pointer-events:none;';
-      img.addEventListener('load',()=>{
-        if(img.naturalWidth && img.naturalHeight){
-          slot.style.aspectRatio=(img.naturalWidth/img.naturalHeight).toFixed(3);
-        }
-      });
-      img.src=mediaFiles[i].url;
-      slot.appendChild(img);
-
-      // Remove (✕) button
-      const rmBtn=document.createElement('button');
-      rmBtn.innerHTML='&times;';
-      rmBtn.title='Remove photo';
-      rmBtn.style.cssText='position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(0,0,0,0.6);color:#fff;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;padding:0;';
-      rmBtn.addEventListener('click',e=>{
-        e.stopPropagation();
-        if(mediaFiles[i]&&mediaFiles[i].url) URL.revokeObjectURL(mediaFiles[i].url);
-        delete mediaFiles[i];
-        rebuildMedia();
-      });
-      slot.appendChild(rmBtn);
-
-      // Drag handle indicator
-      const dragHint=document.createElement('div');
-      dragHint.title='Drag to reorder';
-      dragHint.style.cssText='position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:28px;height:4px;border-radius:2px;background:rgba(255,255,255,0.7);cursor:grab;pointer-events:none;';
-      slot.appendChild(dragHint);
-
-      slot.draggable=true;
-      slot.style.cursor='grab';
-      slot.addEventListener('dragstart',e=>{
-        dragSrcIdx=i;
-        e.dataTransfer.effectAllowed='move';
-        e.dataTransfer.setData('text/plain',String(i));
-        setTimeout(()=>slot.style.opacity='0.45',0);
-      });
-      slot.addEventListener('dragend',e=>{ slot.style.opacity=''; });
-
-    } else {
-      // — Empty slot: show placeholder + file input ——
-      slot.innerHTML=`<svg width="22" height="22" fill="none" stroke="#ccc" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span class="media-slot-label">Add photo</span>`;
-      const inp=document.createElement('input');
-      inp.type='file'; inp.accept='image/*';
-      inp.style.cssText='position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;';
-      inp.addEventListener('change',e=>{
-        const f=e.target.files[0]; if(!f) return;
-        if(mediaFiles[i]&&mediaFiles[i].url) URL.revokeObjectURL(mediaFiles[i].url);
-        mediaFiles[i]={file:f,url:URL.createObjectURL(f),caption:''};
-        rebuildMedia();
-      });
-      slot.appendChild(inp);
-    }
-
-    // Drop target (all slots) — handles both OS file drops and internal reordering
-    slot.addEventListener('dragover',e=>{
-      e.preventDefault();
-      e.dataTransfer.dropEffect = e.dataTransfer.types.includes('Files') ? 'copy' : 'move';
-      slot.style.outline='2px dashed #1c3548';
-      slot.style.outlineOffset='2px';
-    });
-    slot.addEventListener('dragleave',e=>{ slot.style.outline=''; slot.style.outlineOffset=''; });
-    slot.addEventListener('drop',e=>{
-      e.preventDefault();
-      slot.style.outline=''; slot.style.outlineOffset='';
-      // OS file drop (drag from Finder/desktop)
-      if(e.dataTransfer.files && e.dataTransfer.files.length > 0){
-        const f=e.dataTransfer.files[0];
-        if(!f.type.startsWith('image/')) return;
-        if(mediaFiles[i]&&mediaFiles[i].url) URL.revokeObjectURL(mediaFiles[i].url);
-        mediaFiles[i]={file:f,url:URL.createObjectURL(f),caption:(mediaFiles[i]&&mediaFiles[i].caption)||''};
-        rebuildMedia();
-        return;
-      }
-      // Internal reorder
-      const src=parseInt(e.dataTransfer.getData('text/plain'));
-      const dest=i;
-      if(isNaN(src)||src===dest) return;
-      const tmp=mediaFiles[src]||null;
-      if(mediaFiles[dest]) mediaFiles[src]=mediaFiles[dest]; else delete mediaFiles[src];
-      if(tmp) mediaFiles[dest]=tmp; else delete mediaFiles[dest];
-      rebuildMedia();
-    });
-
-    const cap=document.createElement('input');
-    cap.type='text'; cap.placeholder='Caption (optional)';
-    cap.id='cap-'+i;
-    cap.style.cssText='font-size:12px;padding:5px 8px;border:1px solid #e0e2e6;border-radius:6px;width:100%;';
-    cap.value=(mediaFiles[i]&&mediaFiles[i].caption)||'';
-    cap.addEventListener('change',e=>{if(mediaFiles[i]) mediaFiles[i].caption=e.target.value;});
-
-    cell.appendChild(slot);
-    cell.appendChild(cap);
-    grid.appendChild(cell);
-  }
-}
-
-
-// ── Video upload slots (up to 4, similar to photo slots) ──────────────────
-let videoFiles = {};
-const MAX_VIDEOS = 4;
-
-function rebuildVideos() {
-  const grid = document.getElementById('video-grid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  for (let i = 0; i < MAX_VIDEOS; i++) {
-    const cell = document.createElement('div');
-    cell.style.display = 'flex';
-    cell.style.flexDirection = 'column';
-    cell.style.gap = '6px';
-
-    // Label
-    const lbl = document.createElement('div');
-    lbl.textContent = 'Video ' + (i + 1);
-    lbl.style.cssText = 'font-size:11px;font-weight:600;color:#1c3548;letter-spacing:.03em;text-transform:uppercase;';
-
-    // Video link input (primary — replaces file upload)
-    const lnk = document.createElement('input');
-    lnk.type = 'text';
-    lnk.placeholder = 'Video link';
-    lnk.id = 'vlink-' + i;
-    lnk.style.fontSize = '12px';
-    lnk.style.padding = '5px 8px';
-    lnk.style.border = '1px solid #e0e2e6';
-    lnk.style.borderRadius = '6px';
-    lnk.style.width = '100%';
-    lnk.value = (videoFiles[i] && videoFiles[i].link) || '';
-    lnk.addEventListener('input', e => {
-      const url = e.target.value.trim();
-      if (url) {
-        if (!videoFiles[i]) videoFiles[i] = { name: 'Video ' + (i + 1), caption: '', link: '' };
-        videoFiles[i].link = url;
-        // Try to extract a readable filename from the URL
-        try {
-          const parts = decodeURIComponent(new URL(url).pathname).split('/');
-          const fn = parts.filter(Boolean).pop();
-          if (fn) videoFiles[i].name = fn;
-        } catch(_) {}
-      } else {
-        // Link cleared — remove slot unless caption still set
-        if (videoFiles[i] && !videoFiles[i].caption) delete videoFiles[i];
-        else if (videoFiles[i]) videoFiles[i].link = '';
-      }
-    });
-
-    // Caption input (optional)
-    const cap = document.createElement('input');
-    cap.type = 'text';
-    cap.placeholder = 'Caption (optional)';
-    cap.id = 'vcap-' + i;
-    cap.style.fontSize = '12px';
-    cap.style.padding = '5px 8px';
-    cap.style.border = '1px solid #e0e2e6';
-    cap.style.borderRadius = '6px';
-    cap.style.width = '100%';
-    cap.value = (videoFiles[i] && videoFiles[i].caption) || '';
-    cap.addEventListener('input', e => {
-      if (videoFiles[i]) videoFiles[i].caption = e.target.value;
-    });
-
-    cell.appendChild(lbl);
-    cell.appendChild(lnk);
-    cell.appendChild(cap);
-    grid.appendChild(cell);
-  }
-}
-
-async function loadAnnex(e, prefix){
-  const file = e.target.files[0]; if(!file) return;
-  const nameEl = document.getElementById(prefix+'-annex-name')||document.getElementById('log-annex-name');
-  const textEl = document.getElementById(prefix==='log'?'construction-log':prefix+'-annex-text');
-  const zoneEl = document.getElementById(prefix+'-annex-zone')||document.getElementById('log-annex-zone');
-  // Preview div is used for paint, int, and log annex sections
-  const previewEl = (prefix==='paint'||prefix==='int'||prefix==='log') ? document.getElementById(prefix+'-annex-preview') : null;
-  const removeBtn = (prefix==='paint'||prefix==='int'||prefix==='log') ? document.getElementById(prefix+'-annex-remove') : null;
-  if(nameEl) nameEl.textContent = '✓ '+file.name;
-  if(zoneEl) zoneEl.style.borderColor = '#1c3548';
-  let extractedText = '';
-  let extractedHtml = '';
-  try {
-    if(file.name.endsWith('.docx')){
-      const buf = await file.arrayBuffer();
-      // Preserve formatting via convertToHtml when a preview area exists
-      if(previewEl) {
-        // Configure mammoth to keep images as base64 data URIs
-        const options = {
-          convertImage: mammoth.images.imgElement(function(image) {
-            return image.read("base64").then(function(imageBuffer) {
-              return { src: "data:" + image.contentType + ";base64," + imageBuffer };
-            });
-          })
-        };
-        const htmlResult = await mammoth.convertToHtml({arrayBuffer: buf}, options);
-        extractedHtml = htmlResult.value;
-      } else {
-        const result = await mammoth.extractRawText({arrayBuffer: buf});
-        extractedText = result.value;
-      }
-    } else if(file.name.endsWith('.pdf')){
-      const buf = await file.arrayBuffer();
-      const pdfjsLib = window['pdfjs-dist/build/pdf'];
-      if(pdfjsLib) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        const pdfDoc = await pdfjsLib.getDocument({data: buf}).promise;
-        if(previewEl){
-          // Render each PDF page to canvas, then to <img> with data URI.
-          // Scale 1.5 ≈ 144dpi — sufficient quality since images are capped at
-          // 640px wide in the DOCX anyway. JPEG at 85% quality gives ~5-8x smaller
-          // files vs PNG with no visible quality loss on document pages.
-          const htmlParts = [];
-          if(nameEl) nameEl.textContent = '✓ '+file.name+' — rendering '+pdfDoc.numPages+' page(s)…';
-          for(let i=1; i<=pdfDoc.numPages; i++){
-            const page = await pdfDoc.getPage(i);
-            const viewport = page.getViewport({ scale: 1.5 });
-            const canvas = document.createElement('canvas');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            const ctx = canvas.getContext('2d');
-            // Fill white before rendering so JPEG has no transparency issues
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            await page.render({
-              canvasContext: ctx,
-              viewport: viewport,
-            }).promise;
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-            htmlParts.push('<p data-pdf-page="'+i+'"><img src="'+dataUrl+'" alt="page '+i+'" style="max-width:100%;display:block;margin:0 auto 8px auto;background:#f4f5f7;" /></p>');
-          }
-          extractedHtml = htmlParts.join('\n');
-          if(nameEl) nameEl.textContent = '✓ '+file.name+'  ('+pdfDoc.numPages+' page(s) embedded)';
-        } else {
-          // No preview area — fall back to text extraction
-          let text = '';
-          for(let i=1; i<=pdfDoc.numPages; i++){
-            const page = await pdfDoc.getPage(i);
-            const content = await page.getTextContent();
-            text += content.items.map(s=>s.str).join(' ') + '\n';
-          }
-          extractedText = text;
-        }
-      } else {
-        extractedText = '[PDF extraction library not loaded — please paste content manually]';
-      }
-    }
-    // Case A: HTML extracted (only for paint/int with .docx) — show formatted preview
-    if(extractedHtml && previewEl){
-      previewEl.innerHTML = extractedHtml;
-      previewEl.style.display = 'block';
-      if(textEl) { textEl.value = ''; textEl.style.display = 'none'; }
-      if(removeBtn) removeBtn.style.display = 'inline-block';
-    }
-    // Case B: plain text extracted (PDF, or log section)
-    else if(extractedText && textEl){
-      textEl.value = extractedText;
-      textEl.style.display = 'block';
-      if(previewEl) { previewEl.innerHTML = ''; previewEl.style.display = 'none'; }
-      if(removeBtn) removeBtn.style.display = 'inline-block';
-    }
-    // Case C: nothing extracted
-    else if(textEl) {
-      textEl.value = '[No text could be extracted — file may be image-based. Please paste content manually.]';
-      textEl.style.display = 'block';
-      if(removeBtn) removeBtn.style.display = 'inline-block';
-    }
-  } catch(err){
-    if(textEl){ textEl.value = '[Extraction failed: '+err.message+' — please paste content manually]'; textEl.style.display='block'; }
-  }
+  let crTotal=0;
+  document.querySelectorAll('#cr-body tr').forEach(tr=>{
+    const raw=(tr.querySelectorAll('td')[2].querySelector('input').value||'0').replace(/,/g,'').replace(/[€$]/g,'');
+    crTotal+=parseFloat(raw)||0;
+  });
+  const net=coTotal-crTotal;
+  document.getElementById('tot-co').textContent=fmtNum(coTotal);
+  document.getElementById('tot-credits').textContent=fmtNum(crTotal);
+  document.getElementById('tot-grand').textContent=fmtNum(net);
 }
 
 function removeAnnex(prefix){
@@ -34300,6 +34019,7 @@ async function saveDraft() {
     checkboxes: {},
     selects: {},
     co: [],
+    cr: [],
     bdm: [],
     media: {},
     mediaGridCols: null,
@@ -34329,6 +34049,17 @@ async function saveDraft() {
   document.querySelectorAll('#co-body tr').forEach(tr => {
     const cells = tr.querySelectorAll('td');
     draft.co.push({
+      num:    cells[0].querySelector('input').value,
+      desc:   cells[1].querySelector('input').value,
+      amt:    cells[2].querySelector('input').value,
+      status: cells[3].querySelector('select').value,
+    });
+  });
+
+  // Credits rows
+  document.querySelectorAll('#cr-body tr').forEach(tr => {
+    const cells = tr.querySelectorAll('td');
+    draft.cr.push({
       num:    cells[0].querySelector('input').value,
       desc:   cells[1].querySelector('input').value,
       amt:    cells[2].querySelector('input').value,
@@ -34483,7 +34214,22 @@ async function loadDraft(event) {
         cells[3].querySelector('select').value = row.status;
       }
     });
-    if (typeof updateTotals === 'function') updateTotals();
+    // Restore Credits rows
+    document.getElementById('cr-body').innerHTML = '';
+    if (typeof crCount !== 'undefined') crCount = 0;
+    (draft.cr || []).forEach((row, i) => {
+      addCR();
+      const trs = document.querySelectorAll('#cr-body tr');
+      const tr  = trs[trs.length-1];
+      if (tr) {
+        const cells = tr.querySelectorAll('td');
+        cells[0].querySelector('input').value = row.num;
+        cells[1].querySelector('input').value = row.desc;
+        cells[2].querySelector('input').value = row.amt;
+        cells[3].querySelector('select').value = row.status;
+      }
+    });
+    calcTotals();
 
     // Restore BDM rows
     document.getElementById('bdm-body').innerHTML = '';
@@ -35969,10 +35715,68 @@ async function generateDOCX() {
       width: { size: 9500, type: WidthType.DXA },
       columnWidths: [3000,6500],
       rows: [
-        namedRow("Approved total",   document.getElementById('tot-approved').textContent),
-        namedRow("Outstanding total",document.getElementById('tot-outstanding').textContent),
-        namedRow("Grand total",      document.getElementById('tot-grand').textContent),
+        namedRow("Change Orders total", document.getElementById('tot-co').textContent),
       ],
+    }));
+  }
+
+  // Credits table
+  const crRows_dom = document.querySelectorAll('#cr-body tr');
+  if (crRows_dom.length) {
+    s3Children.push(emptyPara());
+    s3Children.push(para("Credits", { bold:true, color:NAVY, size:24, spacing:{before:120,after:60} }));
+
+    const crHeaderRow = new TableRow({
+      children: ['#','Description','Amount','Status'].map((h,i) => new TableCell({
+        width: { size: [500,5500,1700,1800][i], type: WidthType.DXA },
+        shading: { fill: NAVY, type: ShadingType.CLEAR },
+        margins: { top:60, bottom:60, left:120, right:120 },
+        borders: thinBorders,
+        children: [ para(h, { bold:true, color:WHITE, size:24 }) ],
+      })),
+    });
+
+    const crDataRows = Array.from(crRows_dom).map((tr,ri) => {
+      const cells = tr.querySelectorAll('td');
+      const num  = cells[0].querySelector('input').value;
+      const desc = cells[1].querySelector('input').value;
+      const amt  = cells[2].querySelector('input').value;
+      const st   = cells[3].querySelector('select').value;
+      const stColor = st==='approved'?'1E7840':'B46400';
+      const bg = ri%2===0 ? "F8F9FB" : "FFFFFF";
+      return new TableRow({
+        children: [
+          new TableCell({ width:{size:500,type:WidthType.DXA}, shading:{fill:bg,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, borders:thinBorders, children:[para(num,{size:24})] }),
+          new TableCell({ width:{size:5500,type:WidthType.DXA}, shading:{fill:bg,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, borders:thinBorders, children:[para(desc,{size:24})] }),
+          new TableCell({ width:{size:1700,type:WidthType.DXA}, shading:{fill:bg,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, borders:thinBorders, children:[para(currency+fmtMoney(amt),{size:24})] }),
+          new TableCell({ width:{size:1800,type:WidthType.DXA}, shading:{fill:bg,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, borders:thinBorders, children:[para(st.charAt(0).toUpperCase()+st.slice(1),{size:24,color:stColor,bold:true})] }),
+        ],
+      });
+    });
+
+    s3Children.push(new Table({
+      width: { size: 9500, type: WidthType.DXA },
+      columnWidths: [500,5500,1700,1800],
+      rows: [crHeaderRow, ...crDataRows],
+    }));
+
+    s3Children.push(emptyPara());
+    s3Children.push(new Table({
+      width: { size: 9500, type: WidthType.DXA },
+      columnWidths: [3000,6500],
+      rows: [
+        namedRow("Credits total", document.getElementById('tot-credits').textContent),
+      ],
+    }));
+  }
+
+  // Net total summary (always shown if CO section is on)
+  if (coRows_dom.length || crRows_dom.length) {
+    s3Children.push(emptyPara());
+    s3Children.push(new Table({
+      width: { size: 9500, type: WidthType.DXA },
+      columnWidths: [3000,6500],
+      rows: [ namedRow("Net total", document.getElementById('tot-grand').textContent) ],
     }));
   }
 
