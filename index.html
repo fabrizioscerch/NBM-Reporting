@@ -33561,7 +33561,7 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
       <div id="media-grid"></div>
       <div id="media-captions"></div>
       <div class="fl" style="margin-top:16px">
-        <label>Videos <span class="opt">(upload video files — up to 4, shown as play icons in the report)</span></label>
+        <label>Videos <span class="opt">(paste up to 4 video links — shown as play icons in the report)</span></label>
         <div id="video-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:8px"></div>
       </div>
     </div>
@@ -33980,163 +33980,60 @@ function rebuildVideos(){
   const MAX_VIDEOS=4;
   const grid=document.getElementById('video-grid');
   if(!grid) return;
+  grid.style.cssText='display:flex;flex-direction:column;gap:10px;margin-top:8px;';
   grid.innerHTML='';
   for(let i=0;i<MAX_VIDEOS;i++){
     const cell=document.createElement('div');
-    cell.style.cssText='display:flex;flex-direction:column;gap:6px;';
+    cell.style.cssText='display:flex;flex-direction:column;gap:4px;';
 
-    const slot=document.createElement('div');
-    slot.className='media-slot';
-    slot.style.aspectRatio='16/9';
+    // Label
+    const lbl=document.createElement('div');
+    lbl.style.cssText='font-size:11px;font-weight:600;color:#5B7E95;';
+    lbl.textContent='Video '+(i+1);
+    cell.appendChild(lbl);
 
-    if(videoFiles[i]){
-      // Filled: show play icon + filename + remove button
-      const lbl=document.createElement('div');
-      lbl.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;padding:8px;text-align:center;';
-      lbl.innerHTML=`<svg width="28" height="28" fill="none" stroke="#5B7E95" stroke-width="1.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg><span style="font-size:11px;color:#5B7E95;word-break:break-all;">${videoFiles[i].name||''}</span>`;
-      slot.appendChild(lbl);
+    // Link input row
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;gap:6px;align-items:center;';
+    const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    icon.setAttribute('width','15'); icon.setAttribute('height','15');
+    icon.setAttribute('fill','none'); icon.setAttribute('stroke','#5B7E95');
+    icon.setAttribute('stroke-width','1.5'); icon.setAttribute('viewBox','0 0 24 24');
+    icon.style.flexShrink='0';
+    const poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    poly.setAttribute('points','5 3 19 12 5 21 5 3');
+    icon.appendChild(poly);
+    row.appendChild(icon);
 
-      const rmBtn=document.createElement('button');
-      rmBtn.innerHTML='&times;';
-      rmBtn.title='Remove video';
-      rmBtn.style.cssText='position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(0,0,0,0.6);color:#fff;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;padding:0;';
-      rmBtn.addEventListener('click',e=>{
-        e.stopPropagation();
+    const lnk=document.createElement('input');
+    lnk.type='text'; lnk.placeholder='Paste video link…';
+    lnk.id='vlink-'+i;
+    lnk.style.cssText='flex:1;font-size:12px;padding:5px 8px;border:1px solid #e0e2e6;border-radius:6px;';
+    lnk.value=(videoFiles[i]&&videoFiles[i].link)||'';
+    lnk.addEventListener('input',function(){
+      const url=this.value.trim();
+      if(url){
+        let name=url;
+        try{name=decodeURIComponent(url.split('/').filter(Boolean).pop()||url);}catch(ex){}
+        videoFiles[i]={link:url,name:name,caption:(videoFiles[i]&&videoFiles[i].caption)||''};
+      } else {
         delete videoFiles[i];
-        rebuildVideos();
-      });
-      slot.appendChild(rmBtn);
+      }
+    });
+    row.appendChild(lnk);
+    cell.appendChild(row);
 
-    } else {
-      // Empty: placeholder + file input
-      slot.innerHTML=`<svg width="22" height="22" fill="none" stroke="#ccc" stroke-width="1.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg><span class="media-slot-label">Add video</span>`;
-      const inp=document.createElement('input');
-      inp.type='file'; inp.accept='video/*';
-      inp.style.cssText='position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;';
-      inp.addEventListener('change',e=>{
-        const f=e.target.files[0]; if(!f) return;
-        videoFiles[i]={file:f,name:f.name,caption:''};
-        rebuildVideos();
-      });
-      slot.appendChild(inp);
-    }
-
+    // Caption input
     const cap=document.createElement('input');
     cap.type='text'; cap.placeholder='Caption (optional)';
     cap.id='vcap-'+i;
-    cap.style.cssText='font-size:12px;padding:5px 8px;border:1px solid #e0e2e6;border-radius:6px;width:100%;';
+    cap.style.cssText='font-size:12px;padding:5px 8px;border:1px solid #e0e2e6;border-radius:6px;width:100%;box-sizing:border-box;';
     cap.value=(videoFiles[i]&&videoFiles[i].caption)||'';
-    cap.addEventListener('change',e=>{ if(videoFiles[i]) videoFiles[i].caption=e.target.value; });
-    cell.appendChild(slot);
+    cap.addEventListener('input',function(){if(videoFiles[i]) videoFiles[i].caption=this.value;});
     cell.appendChild(cap);
+
     grid.appendChild(cell);
   }
-}
-
-
-function removeAnnex(prefix){
-  const fileInput = document.getElementById(prefix+'-annex-file');
-  const nameEl    = document.getElementById(prefix+'-annex-name');
-  const textEl    = document.getElementById(prefix==='log'?'construction-log':prefix+'-annex-text');
-  const previewEl = document.getElementById(prefix+'-annex-preview');
-  const zoneEl    = document.getElementById(prefix+'-annex-zone');
-  const removeBtn = document.getElementById(prefix+'-annex-remove');
-  if(fileInput) fileInput.value = '';
-  if(previewEl){ previewEl.innerHTML = ''; previewEl.style.display = 'none'; }
-  if(textEl){
-    textEl.value = '';
-    // construction-log textarea is always visible; paint/int textareas hide
-    if(prefix==='paint'||prefix==='int') textEl.style.display = 'none';
-  }
-  if(nameEl){
-    const labels = {
-      paint: 'Upload Paint Surveyor Report (.pdf)',
-      int:   'Upload Interiors Surveyor Report (.pdf)',
-      log:   'Upload Construction Log (.pdf)',
-    };
-    nameEl.textContent = labels[prefix] || 'Upload file';
-  }
-  if(zoneEl) zoneEl.style.borderColor = '';
-  if(removeBtn) removeBtn.style.display = 'none';
-}
-
-let ganttFiles = [];
-
-async function previewGantt(e) {
-  const rawFiles = Array.from(e.target.files || []);
-  if (!rawFiles.length) return;
-  const zone = document.getElementById('gantt-zone');
-  const container = document.getElementById('gantt-previews');
-  if (!zone || !container) return;
-  zone.style.display = 'none';
-  container.style.display = 'block';
-  container.innerHTML = '';
-  const statusDiv = document.createElement('div');
-  statusDiv.style.cssText = 'font-size:12px;color:#666;margin-bottom:8px';
-  statusDiv.textContent = 'Loading…';
-  container.appendChild(statusDiv);
-
-  // Expand PDF files into per-page Blobs using PDF.js
-  const expandedBlobs = [];
-  for (const f of rawFiles) {
-    if (f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')) {
-      try {
-        const buf = await f.arrayBuffer();
-        const pdfjsLib = window['pdfjs-dist/build/pdf'];
-        if (pdfjsLib) {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-          const pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
-          for (let pi = 1; pi <= pdfDoc.numPages; pi++) {
-            const page = await pdfDoc.getPage(pi);
-            const viewport = page.getViewport({ scale: 2.5 });
-            const canvas = document.createElement('canvas');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            const ctx = canvas.getContext('2d');
-            await page.render({ canvasContext: ctx, viewport }).promise;
-            const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-            blob._ganttName = f.name + (pdfDoc.numPages > 1 ? ' – p' + pi : '');
-            expandedBlobs.push(blob);
-          }
-        }
-      } catch(err) {
-        console.error('Gantt PDF render error:', err);
-        expandedBlobs.push(f);
-      }
-    } else {
-      expandedBlobs.push(f);
-    }
-  }
-
-  ganttFiles = expandedBlobs;
-  container.innerHTML = '';
-  ganttFiles.forEach((f, i) => {
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'margin-bottom:8px';
-    const img = document.createElement('img');
-    img.className = 'gantt-preview';
-    img.style.cssText = 'display:block;max-width:100%;border-radius:8px';
-    img.src = URL.createObjectURL(f);
-    const lbl = document.createElement('div');
-    lbl.style.cssText = 'font-size:11px;color:#999;margin-top:3px';
-    lbl.textContent = (ganttFiles.length > 1 ? 'Page ' + (i+1) + ': ' : '') + (f._ganttName || f.name || '');
-    wrapper.appendChild(img);
-    wrapper.appendChild(lbl);
-    container.appendChild(wrapper);
-  });
-  const removeBtn = document.createElement('button');
-  removeBtn.type = 'button';
-  removeBtn.textContent = '✕ Remove';
-  removeBtn.style.cssText = 'margin-top:6px;background:#f5f5f5;border:1px solid #d0d2d6;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;color:#666;font-family:inherit';
-  removeBtn.onclick = () => {
-    ganttFiles = [];
-    container.style.display = 'none';
-    container.innerHTML = '';
-    zone.style.display = '';
-    const inp = zone.querySelector('input[type=file]');
-    if (inp) inp.value = '';
-  };
-  container.appendChild(removeBtn);
 }
 
 function v(id){return (document.getElementById(id)||{}).value||'';}
@@ -34282,18 +34179,16 @@ async function saveDraft() {
     }
   }
 
-  // Video files
-  for (const k in videoFiles) {
-    if (videoFiles[k] && videoFiles[k].file) {
-      const vf = videoFiles[k];
-      const cap = document.getElementById('vcap-'+k);
-      draft.videos = draft.videos || {};
-      draft.videos[k] = {
-        name: vf.file.name,
-        type: vf.file.type,
-        data: await _fileToBase64(vf.file),
-        caption: cap ? cap.value : vf.caption || '',
-      };
+  // Video links
+  for(let vi=0;vi<4;vi++){
+    const lnkEl=document.getElementById('vlink-'+vi);
+    const capEl=document.getElementById('vcap-'+vi);
+    const url=lnkEl?lnkEl.value.trim():'';
+    if(url){
+      draft.videos=draft.videos||{};
+      let vname=url;
+      try{vname=decodeURIComponent(url.split('/').filter(Boolean).pop()||url);}catch(ex){}
+      draft.videos[vi]={link:url,name:vname,caption:capEl?capEl.value:''};
     }
   }
 
@@ -34458,21 +34353,24 @@ async function loadDraft(event) {
       }
     }, 50);
 
-    // Restore video files
-    for (const k of Object.keys(videoFiles)) delete videoFiles[k];
-    for (const k in (draft.videos || {})) {
-      const vd = draft.videos[k];
-      const blob = _base64ToBlob(vd.data, vd.type);
-      const f = new File([blob], vd.name, { type: vd.type });
-      videoFiles[k] = { file: f, name: vd.name, caption: vd.caption || '' };
-    }
-    if (typeof rebuildVideos === 'function') rebuildVideos();
-    setTimeout(() => {
-      for (const k in (draft.videos || {})) {
-        const capEl = document.getElementById('vcap-'+k);
-        if (capEl) capEl.value = draft.videos[k].caption || '';
+    // Restore video links
+    for(const k of Object.keys(videoFiles)) delete videoFiles[k];
+    for(const k in (draft.videos||{})){
+      const vd=draft.videos[k];
+      if(vd.link){
+        videoFiles[k]={link:vd.link,name:vd.name||vd.link,caption:vd.caption||''};
       }
-    }, 50);
+    }
+    if(typeof rebuildVideos==='function') rebuildVideos();
+    setTimeout(()=>{
+      for(const k in (draft.videos||{})){
+        const vd=draft.videos[k];
+        const lnkEl=document.getElementById('vlink-'+k);
+        const capEl=document.getElementById('vcap-'+k);
+        if(lnkEl&&vd.link) lnkEl.value=vd.link;
+        if(capEl) capEl.value=vd.caption||'';
+      }
+    },50);
 
     // Restore Gantt (handles both old single-object and new array formats)
     if (draft.gantt) {
