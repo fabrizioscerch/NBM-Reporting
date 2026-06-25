@@ -35693,10 +35693,11 @@ async function generateDOCX() {
       const imgWmm = 170 / cols;
       const imgW = imgWmm / 25.4 * 914400; // EMU via inches
 
-      // Photo pairs: image row + caption band row (no nested tables)
+      // Each photo pair → one 2-row table (image row + navy caption row)
+      // Using data: URL for canvas so Safari doesn't taint it
       const blueBorder = { style: BorderStyle.SINGLE, size: 18, color: '5B7E96' };
       const cellW = Math.floor(9500 / cols);
-      const gapDxa = mm2dxa(4); // 4mm each side = 8mm gap between columns
+      const gapDxa = mm2dxa(4);
 
       for (let r=0; r<rows; r++) {
         const imgCells = [];
@@ -35704,7 +35705,7 @@ async function generateDOCX() {
 
         for (let ci=0; ci<cols; ci++) {
           const idx = r*cols+ci;
-          const hasPh = !!(mediaFiles[idx]);
+          const hasPh = !!(mediaFiles[idx] && mediaFiles[idx].url);
           let imgPara = emptyPara();
 
           if (hasPh) {
@@ -35712,57 +35713,68 @@ async function generateDOCX() {
             const _colPx = Math.round(imgW / 9525);
             const PRINT_SCALE = 2.5;
             const { bytes: imgBytes, dw: _dispW, dh: _dispH } = await new Promise((res) => {
-              const _img2 = new Image();
-              _img2.onload = () => {
-                try {
-                  const nw = _img2.naturalWidth  || 4;
-                  const nh = _img2.naturalHeight || 3;
-                  const ew = (_photoRot===90||_photoRot===270) ? nh : nw;
-                  const eh = (_photoRot===90||_photoRot===270) ? nw : nh;
-                  let dw = _colPx;
-                  let dh = Math.round(dw * eh / ew);
-                  const cw = Math.round(dw * PRINT_SCALE);
-                  const ch = Math.round(dh * PRINT_SCALE);
-                  const cvs = document.createElement('canvas');
-                  cvs.width = cw; cvs.height = ch;
-                  const ctx2 = cvs.getContext('2d');
-                  ctx2.fillStyle = '#ffffff';
-                  ctx2.fillRect(0, 0, cw, ch);
-                  if (_photoRot === 0) {
-                    ctx2.drawImage(_img2, 0, 0, cw, ch);
-                  } else {
-                    ctx2.translate(cw/2, ch/2);
-                    ctx2.rotate(_photoRot * Math.PI / 180);
-                    if (_photoRot === 90 || _photoRot === 270) {
-                      ctx2.drawImage(_img2, -ch/2, -cw/2, ch, cw);
+              // Load via data: URL to avoid canvas taint on Safari local files
+              const _fr = new FileReader();
+              _fr.onload = (ev) => {
+                const dataUrl = ev.target.result;
+                const _img2 = new Image();
+                _img2.onload = () => {
+                  try {
+                    const nw = _img2.naturalWidth  || 4;
+                    const nh = _img2.naturalHeight || 3;
+                    const ew = (_photoRot===90||_photoRot===270) ? nh : nw;
+                    const eh = (_photoRot===90||_photoRot===270) ? nw : nh;
+                    const dw = _colPx;
+                    const dh = Math.round(dw * eh / ew);
+                    const cw = Math.round(dw * PRINT_SCALE);
+                    const ch = Math.round(dh * PRINT_SCALE);
+                    const cvs = document.createElement('canvas');
+                    cvs.width = cw; cvs.height = ch;
+                    const ctx2 = cvs.getContext('2d');
+                    ctx2.fillStyle = '#ffffff';
+                    ctx2.fillRect(0, 0, cw, ch);
+                    if (_photoRot === 0) {
+                      ctx2.drawImage(_img2, 0, 0, cw, ch);
                     } else {
-                      ctx2.drawImage(_img2, -cw/2, -ch/2, cw, ch);
+                      ctx2.translate(cw/2, ch/2);
+                      ctx2.rotate(_photoRot * Math.PI / 180);
+                      if (_photoRot === 90 || _photoRot === 270) {
+                        ctx2.drawImage(_img2, -ch/2, -cw/2, ch, cw);
+                      } else {
+                        ctx2.drawImage(_img2, -cw/2, -ch/2, cw, ch);
+                      }
                     }
-                  }
-                  const dataUrl = cvs.toDataURL('image/jpeg', 0.85);
-                  const b64 = dataUrl.split(',')[1];
-                  if (!b64) throw new Error('toDataURL failed');
-                  const bin = atob(b64);
-                  const arr = new Uint8Array(bin.length);
-                  for (let bi=0; bi<bin.length; bi++) arr[bi] = bin.charCodeAt(bi);
-                  res({ bytes: arr, dw, dh });
-                } catch(e) {
-                  const fr = new FileReader();
-                  fr.onload = ev => {
-                    const b64 = ev.target.result.split(',')[1] || '';
+                    const jpegUrl = cvs.toDataURL('image/jpeg', 0.85);
+                    const b64 = jpegUrl.split(',')[1];
+                    if (!b64) throw new Error('toDataURL empty');
                     const bin = atob(b64);
                     const arr = new Uint8Array(bin.length);
                     for (let bi=0; bi<bin.length; bi++) arr[bi] = bin.charCodeAt(bi);
-                    res({ bytes: arr, dw: _colPx, dh: Math.round(_colPx * (_img2.naturalHeight||3) / (_img2.naturalWidth||4)) });
-                  };
-                  fr.onerror = () => res({ bytes: new Uint8Array(0), dw: _colPx, dh: _colPx });
-                  if (mediaFiles[idx].file) fr.readAsDataURL(mediaFiles[idx].file);
-                  else res({ bytes: new Uint8Array(0), dw: _colPx, dh: _colPx });
-                }
+                    res({ bytes: arr, dw, dh });
+                  } catch(e) {
+                    // Last-resort: embed original bytes at display dimensions
+                    const b64 = dataUrl.split(',')[1] || '';
+                    const bin = atob(b64);
+                    const arr = new Uint8Array(bin.length);
+                    for (let bi=0; bi<bin.length; bi++) arr[bi] = bin.charCodeAt(bi);
+                    const nw2 = _img2.naturalWidth || 4;
+                    const nh2 = _img2.naturalHeight || 3;
+                    res({ bytes: arr, dw: _colPx, dh: Math.round(_colPx * nh2 / nw2) });
+                  }
+                };
+                _img2.onerror = () => {
+                  const b64 = dataUrl.split(',')[1] || '';
+                  const bin = atob(b64); const arr = new Uint8Array(bin.length);
+                  for (let bi=0;bi<bin.length;bi++) arr[bi]=bin.charCodeAt(bi);
+                  res({ bytes: arr, dw: _colPx, dh: _colPx });
+                };
+                _img2.src = dataUrl;
               };
-              _img2.onerror = () => res({ bytes: new Uint8Array(0), dw: _colPx, dh: _colPx });
-              _img2.src = mediaFiles[idx].url;
+              _fr.onerror = () => res({ bytes: new Uint8Array(0), dw: _colPx, dh: _colPx });
+              if (mediaFiles[idx].file) _fr.readAsDataURL(mediaFiles[idx].file);
+              else res({ bytes: new Uint8Array(0), dw: _colPx, dh: _colPx });
             });
+
             if (imgBytes.length > 0) {
               imgPara = new Paragraph({
                 alignment: AlignmentType.CENTER,
@@ -35772,26 +35784,22 @@ async function generateDOCX() {
             }
           }
 
-          // Image cell: top+left+right blue border, no bottom border
+          // Image cell: top+left+right blue border only
           imgCells.push(new TableCell({
             width: { size: cellW, type: WidthType.DXA },
-            borders: hasPh
-              ? { top:blueBorder, left:blueBorder, right:blueBorder, bottom:noBorder }
-              : noBorders,
-            margins: { top: hasPh ? 40 : 0, bottom: 0, left: hasPh ? gapDxa : 0, right: hasPh ? gapDxa : 0 },
+            borders: hasPh ? { top:blueBorder, left:blueBorder, right:blueBorder, bottom:noBorder } : noBorders,
+            margins: { top: hasPh?40:0, bottom:0, left: hasPh?gapDxa:0, right: hasPh?gapDxa:0 },
             children: [imgPara],
           }));
 
-          // Caption cell: navy band, left+right+bottom blue border, no top border
+          // Caption cell: navy + left+right+bottom blue border, no top
           const capEl = document.getElementById('cap-'+idx);
           const capText = capEl ? capEl.value.trim() : '';
           capCells.push(new TableCell({
             width: { size: cellW, type: WidthType.DXA },
-            borders: hasPh
-              ? { top:noBorder, left:blueBorder, right:blueBorder, bottom:blueBorder }
-              : noBorders,
+            borders: hasPh ? { top:noBorder, left:blueBorder, right:blueBorder, bottom:blueBorder } : noBorders,
             shading: hasPh ? { fill:'1c3548', type:ShadingType.CLEAR, color:'1c3548' } : undefined,
-            margins: { top: hasPh ? 40 : 0, bottom: hasPh ? 40 : 0, left: hasPh ? 60 : 0, right: hasPh ? 60 : 0 },
+            margins: { top: hasPh?40:0, bottom: hasPh?40:0, left: hasPh?60:0, right: hasPh?60:0 },
             children: [new Paragraph({
               alignment: AlignmentType.CENTER,
               spacing:{before:0,after:0},
@@ -35800,18 +35808,17 @@ async function generateDOCX() {
           }));
         }
 
-        // Push image row then caption band row
+        // One table per pair with both rows — borders connect cleanly
         s6Children.push(new Table({
           width: { size:9500, type: WidthType.DXA },
           columnWidths: Array(cols).fill(cellW),
-          rows: [ new TableRow({ children: imgCells }) ],
+          borders: noBorders,
+          rows: [
+            new TableRow({ children: imgCells }),
+            new TableRow({ children: capCells }),
+          ],
         }));
-        s6Children.push(new Table({
-          width: { size:9500, type: WidthType.DXA },
-          columnWidths: Array(cols).fill(cellW),
-          rows: [ new TableRow({ children: capCells }) ],
-        }));
-        s6Children.push(emptyPara()); // gap between photo pairs
+        s6Children.push(emptyPara());
       }
     }
 
@@ -35871,7 +35878,7 @@ async function generateDOCX() {
             const innerRows=[
               new TableRow({ children:[
                 new TableCell({
-                  borders:{top:blueBorder,left:blueBorder,right:blueBorder,bottom:noBorder},
+                  borders:{top:blueBorder,left:blueBorder,right:blueBorder,bottom:capText?noBorder:blueBorder},
                   margins:{top:0,bottom:0,left:0,right:0},
                   children:[
                     new Paragraph({
@@ -35886,7 +35893,7 @@ async function generateDOCX() {
                   ],
                 })
               ]}),
-              new TableRow({ children:[
+              ...(capText ? [new TableRow({ children:[
                 new TableCell({
                   borders:{top:noBorder,left:blueBorder,right:blueBorder,bottom:blueBorder},
                   shading:{fill:'1c3548',type:ShadingType.CLEAR,color:'1c3548'},
@@ -35898,7 +35905,7 @@ async function generateDOCX() {
                     })
                   ],
                 })
-              ]}),
+              ]})] : []),
             ];
             rowCells.push(new TableCell({
               width:{size:vCellW,type:WidthType.DXA},
@@ -35917,6 +35924,7 @@ async function generateDOCX() {
         s7Children.push(new Table({
           width:{size:9500,type:WidthType.DXA},
           columnWidths:Array(vCols).fill(vCellW),
+          borders: noBorders,
           rows:[new TableRow({children:rowCells})],
         }));
       }
