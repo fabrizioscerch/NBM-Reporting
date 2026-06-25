@@ -35731,7 +35731,6 @@ async function generateDOCX() {
             // Canvas is drawn at PRINT_SCALE × display px for good print quality (~240 DPI)
             const _photoRot = mediaFiles[idx].rotation || 0;
             const _colPx = Math.round(imgW / 9525); // column width in display px (96 DPI)
-            const _maxHpx = Math.floor(((257 - 30 - rows * 10) / rows) / 25.4 * 96);
             const PRINT_SCALE = 2.5; // canvas at 2.5× → ~240 DPI effective
             const { bytes: imgBytes, dw: _dispW, dh: _dispH } = await new Promise((res) => {
               const _img2 = new Image();
@@ -35743,7 +35742,7 @@ async function generateDOCX() {
                   const eh = (_photoRot===90||_photoRot===270) ? nw : nh;
                   let dw = _colPx;
                   let dh = Math.round(dw * eh / ew);
-                  if (eh > ew && dh > _maxHpx) { dh = _maxHpx; dw = Math.round(_maxHpx * ew / eh); }
+                  // No portrait height cap — photos fill column width and span pages naturally
                   // Canvas at print resolution
                   const cw = Math.round(dw * PRINT_SCALE);
                   const ch = Math.round(dh * PRINT_SCALE);
