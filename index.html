@@ -33695,7 +33695,7 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
       <button class="draft-btn" onclick="document.getElementById('draft-load-input').click()" type="button">📂 Load Draft</button>
       <input type="file" id="draft-load-input" accept=".json" onchange="loadDraft(event)" style="display:none;">
     </div>
-    <button class="gen-btn" onclick="generateDOCX()">&#8595; Generate Report</button>
+    <button class="gen-btn" onclick="generateDOCX().catch(e=>{const pb=document.getElementById('progress-bar');pb.style.display='block';pb.textContent='ERROR: '+e.message;console.error(e);})">&#8595; Generate Report</button>
     <div class="progress-bar" id="progress-bar">Building your Word document...</div>
   </div>
 
