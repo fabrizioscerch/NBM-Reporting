@@ -33857,8 +33857,13 @@ function rebuildMedia(){
     if(mediaFiles[i]){
       // — Filled slot: show image, remove button, enable drag ——
       const img=document.createElement('img');
+      img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:inherit;pointer-events:none;';
+      img.addEventListener('load',()=>{
+        if(img.naturalWidth && img.naturalHeight){
+          slot.style.aspectRatio=(img.naturalWidth/img.naturalHeight).toFixed(3);
+        }
+      });
       img.src=mediaFiles[i].url;
-      img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;pointer-events:none;';
       slot.appendChild(img);
 
       // Remove (✕) button
@@ -34058,26 +34063,26 @@ async function loadAnnex(e, prefix){
         const pdfDoc = await pdfjsLib.getDocument({data: buf}).promise;
         if(previewEl){
           // Render each PDF page to canvas, then to <img> with data URI.
-          // Scale 2.5 ≈ 240dpi for sharp text. PNG output with transparent
-          // canvas background so the document's light grey page color shows
-          // through where the PDF page is white. The data-pdf-page attribute
-          // lets the docx converter force a page break and vertically center.
+          // Scale 1.5 ≈ 144dpi — sufficient quality since images are capped at
+          // 640px wide in the DOCX anyway. JPEG at 85% quality gives ~5-8x smaller
+          // files vs PNG with no visible quality loss on document pages.
           const htmlParts = [];
-          if(nameEl) nameEl.textContent = '✓ '+file.name+' — rendering '+pdfDoc.numPages+' page(s) at high resolution…';
+          if(nameEl) nameEl.textContent = '✓ '+file.name+' — rendering '+pdfDoc.numPages+' page(s)…';
           for(let i=1; i<=pdfDoc.numPages; i++){
             const page = await pdfDoc.getPage(i);
-            const viewport = page.getViewport({ scale: 2.5 });
+            const viewport = page.getViewport({ scale: 1.5 });
             const canvas = document.createElement('canvas');
             canvas.width = viewport.width;
             canvas.height = viewport.height;
             const ctx = canvas.getContext('2d');
-            // Important: render with transparent background so PNG retains alpha
+            // Fill white before rendering so JPEG has no transparency issues
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             await page.render({
               canvasContext: ctx,
               viewport: viewport,
-              background: 'rgba(0,0,0,0)',
             }).promise;
-            const dataUrl = canvas.toDataURL('image/png');
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
             htmlParts.push('<p data-pdf-page="'+i+'"><img src="'+dataUrl+'" alt="page '+i+'" style="max-width:100%;display:block;margin:0 auto 8px auto;background:#f4f5f7;" /></p>');
           }
           extractedHtml = htmlParts.join('\n');
