@@ -34849,33 +34849,15 @@ async function generateDOCX() {
         const offsetPx = Math.max(0, (pageContentHpx - dh) / 2);
         spacingBefore = Math.round(offsetPx * 15); // 1px ≈ 15 dxa
       }
-      // Resample to display size via canvas → JPEG 85% to keep DOCX small
-      const bytes = await new Promise(res2 => {
-        const _ai = new Image();
-        _ai.onload = () => {
-          const _ac = document.createElement('canvas');
-          _ac.width = dw; _ac.height = dh;
-          const _actx = _ac.getContext('2d');
-          _actx.fillStyle = '#ffffff';
-          _actx.fillRect(0, 0, dw, dh);
-          _actx.drawImage(_ai, 0, 0, dw, dh);
-          const _au = _ac.toDataURL('image/jpeg', 0.85);
-          const _ab64 = _au.split(',')[1];
-          const _abin = atob(_ab64);
-          const _aarr = new Uint8Array(_abin.length);
-          for (let _ai2=0; _ai2<_abin.length; _ai2++) _aarr[_ai2] = _abin.charCodeAt(_ai2);
-          res2(_aarr);
-        };
-        _ai.onerror = () => res2(dataUriToBytes(src)); // fallback: embed original
-        _ai.src = src;
-      });
+      // Embed original bytes at display dimensions (already JPEG 85% from PDF renderer)
+      const bytes = dataUriToBytes(src);
       return new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { before: spacingBefore, after: 0 },
         pageBreakBefore: !!opts.pageBreakBefore,
         children: [
           new ImageRun({
-            type: 'jpg',
+            type: dataUriType(src),
             data: bytes,
             transformation: { width: dw, height: dh },
           }),
@@ -35665,18 +35647,19 @@ async function generateDOCX() {
         img.src = URL.createObjectURL(_gf);
       }).catch(() => null);
       if (ganttImgEl) {
-        // Calculate display size first, then draw to canvas at that size → JPEG 85%
+        // Display dims: 640px wide max
         const targetWpx = 640;
         const maxHpx = 900;
         let ganttW = targetWpx;
         let ganttH = Math.round(targetWpx * ganttImgEl.naturalHeight / ganttImgEl.naturalWidth);
         if (ganttH > maxHpx) { ganttW = Math.round(ganttW * maxHpx / ganttH); ganttH = maxHpx; }
+        // Canvas at 2× for print quality
         const cvs = document.createElement('canvas');
-        cvs.width = ganttW; cvs.height = ganttH;
+        cvs.width = ganttW * 2; cvs.height = ganttH * 2;
         const cctx = cvs.getContext('2d');
         cctx.fillStyle = '#ffffff';
-        cctx.fillRect(0, 0, ganttW, ganttH);
-        cctx.drawImage(ganttImgEl, 0, 0, ganttW, ganttH);
+        cctx.fillRect(0, 0, cvs.width, cvs.height);
+        cctx.drawImage(ganttImgEl, 0, 0, cvs.width, cvs.height);
         const dataUrl = cvs.toDataURL('image/jpeg', 0.85);
         const b64 = dataUrl.split(',')[1];
         const bin = atob(b64);
@@ -35745,44 +35728,64 @@ async function generateDOCX() {
           const cellChildren = [];
           if (mediaFiles[idx]) {
             // Single image load: measure dims, resample + rotate → JPEG 85%
+            // Canvas is drawn at PRINT_SCALE × display px for good print quality (~240 DPI)
             const _photoRot = mediaFiles[idx].rotation || 0;
-            const _colPx = Math.round(imgW / 9525); // column width in px
+            const _colPx = Math.round(imgW / 9525); // column width in display px (96 DPI)
             const _maxHpx = Math.floor(((257 - 30 - rows * 10) / rows) / 25.4 * 96);
-            const { bytes: imgBytes, dw: _dispW, dh: _dispH } = await new Promise((res, rej) => {
+            const PRINT_SCALE = 2.5; // canvas at 2.5× → ~240 DPI effective
+            const { bytes: imgBytes, dw: _dispW, dh: _dispH } = await new Promise((res) => {
               const _img2 = new Image();
               _img2.onload = () => {
-                const nw = _img2.naturalWidth  || 4;
-                const nh = _img2.naturalHeight || 3;
-                // Effective dims after rotation
-                const ew = (_photoRot===90||_photoRot===270) ? nh : nw;
-                const eh = (_photoRot===90||_photoRot===270) ? nw : nh;
-                let dw = _colPx;
-                let dh = Math.round(dw * eh / ew);
-                if (eh > ew && dh > _maxHpx) { dh = _maxHpx; dw = Math.round(_maxHpx * ew / eh); }
-                const cvs = document.createElement('canvas');
-                cvs.width = dw; cvs.height = dh;
-                const ctx2 = cvs.getContext('2d');
-                ctx2.fillStyle = '#ffffff';
-                ctx2.fillRect(0, 0, dw, dh);
-                if (_photoRot === 0) {
-                  ctx2.drawImage(_img2, 0, 0, dw, dh);
-                } else {
-                  ctx2.translate(dw/2, dh/2);
-                  ctx2.rotate(_photoRot * Math.PI / 180);
-                  if (_photoRot === 90 || _photoRot === 270) {
-                    ctx2.drawImage(_img2, -dh/2, -dw/2, dh, dw);
+                try {
+                  const nw = _img2.naturalWidth  || 4;
+                  const nh = _img2.naturalHeight || 3;
+                  const ew = (_photoRot===90||_photoRot===270) ? nh : nw;
+                  const eh = (_photoRot===90||_photoRot===270) ? nw : nh;
+                  let dw = _colPx;
+                  let dh = Math.round(dw * eh / ew);
+                  if (eh > ew && dh > _maxHpx) { dh = _maxHpx; dw = Math.round(_maxHpx * ew / eh); }
+                  // Canvas at print resolution
+                  const cw = Math.round(dw * PRINT_SCALE);
+                  const ch = Math.round(dh * PRINT_SCALE);
+                  const cvs = document.createElement('canvas');
+                  cvs.width = cw; cvs.height = ch;
+                  const ctx2 = cvs.getContext('2d');
+                  ctx2.fillStyle = '#ffffff';
+                  ctx2.fillRect(0, 0, cw, ch);
+                  if (_photoRot === 0) {
+                    ctx2.drawImage(_img2, 0, 0, cw, ch);
                   } else {
-                    ctx2.drawImage(_img2, -dw/2, -dh/2, dw, dh);
+                    ctx2.translate(cw/2, ch/2);
+                    ctx2.rotate(_photoRot * Math.PI / 180);
+                    if (_photoRot === 90 || _photoRot === 270) {
+                      ctx2.drawImage(_img2, -ch/2, -cw/2, ch, cw);
+                    } else {
+                      ctx2.drawImage(_img2, -cw/2, -ch/2, cw, ch);
+                    }
                   }
+                  const dataUrl = cvs.toDataURL('image/jpeg', 0.85);
+                  const b64 = dataUrl.split(',')[1];
+                  if (!b64) throw new Error('toDataURL failed');
+                  const bin = atob(b64);
+                  const arr = new Uint8Array(bin.length);
+                  for (let bi=0; bi<bin.length; bi++) arr[bi] = bin.charCodeAt(bi);
+                  res({ bytes: arr, dw, dh });
+                } catch(e) {
+                  // Fallback: read file bytes directly (no resampling)
+                  const fr = new FileReader();
+                  fr.onload = ev => {
+                    const b64 = ev.target.result.split(',')[1] || '';
+                    const bin = atob(b64);
+                    const arr = new Uint8Array(bin.length);
+                    for (let bi=0; bi<bin.length; bi++) arr[bi] = bin.charCodeAt(bi);
+                    res({ bytes: arr, dw: _colPx, dh: Math.round(_colPx * (_img2.naturalHeight||3) / (_img2.naturalWidth||4)) });
+                  };
+                  fr.onerror = () => res({ bytes: new Uint8Array(0), dw: _colPx, dh: _colPx });
+                  if (mediaFiles[idx].file) fr.readAsDataURL(mediaFiles[idx].file);
+                  else res({ bytes: new Uint8Array(0), dw: _colPx, dh: _colPx });
                 }
-                const dataUrl = cvs.toDataURL('image/jpeg', 0.85);
-                const b64 = dataUrl.split(',')[1];
-                const bin = atob(b64);
-                const arr = new Uint8Array(bin.length);
-                for (let bi=0; bi<bin.length; bi++) arr[bi] = bin.charCodeAt(bi);
-                res({ bytes: arr, dw, dh });
               };
-              _img2.onerror = () => rej(new Error('photo load failed'));
+              _img2.onerror = () => res({ bytes: new Uint8Array(0), dw: _colPx, dh: _colPx });
               _img2.src = mediaFiles[idx].url;
             });
             const imgType = 'jpg';
