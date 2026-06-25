@@ -33884,11 +33884,17 @@ function rebuildMedia(){
 
     if(mediaFiles[i]){
       // Filled slot: show image, remove button, enable drag
+      const _rot=mediaFiles[i].rotation||0;
       const img=document.createElement('img');
-      img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:inherit;pointer-events:none;';
+      img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:inherit;pointer-events:none;transform:rotate('+_rot+'deg);';
       img.addEventListener('load',()=>{
         if(img.naturalWidth && img.naturalHeight){
-          slot.style.aspectRatio=(img.naturalWidth/img.naturalHeight).toFixed(3);
+          const r=mediaFiles[i].rotation||0;
+          if(r===90||r===270){
+            slot.style.aspectRatio=(img.naturalHeight/img.naturalWidth).toFixed(3);
+          } else {
+            slot.style.aspectRatio=(img.naturalWidth/img.naturalHeight).toFixed(3);
+          }
         }
       });
       img.src=mediaFiles[i].url;
@@ -33906,6 +33912,18 @@ function rebuildMedia(){
         rebuildMedia();
       });
       slot.appendChild(rmBtn);
+
+      // Rotate (↻) button — fix EXIF/upload orientation
+      const rotBtn=document.createElement('button');
+      rotBtn.innerHTML='&#8635;';
+      rotBtn.title='Rotate 90°';
+      rotBtn.style.cssText='position:absolute;bottom:5px;right:5px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(0,0,0,0.6);color:#fff;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;padding:0;';
+      rotBtn.addEventListener('click',e=>{
+        e.stopPropagation();
+        mediaFiles[i].rotation=((mediaFiles[i].rotation||0)+90)%360;
+        rebuildMedia();
+      });
+      slot.appendChild(rotBtn);
 
       // Drag hint bar
       const dragHint=document.createElement('div');
@@ -34175,13 +34193,16 @@ async function previewGantt(e) {
           const pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
           for (let pi = 1; pi <= pdfDoc.numPages; pi++) {
             const page = await pdfDoc.getPage(pi);
-            const viewport = page.getViewport({ scale: 2.5 });
+            // Scale 1.5 ≈ 144 dpi — sufficient for DOCX; JPEG 85% keeps file small
+            const viewport = page.getViewport({ scale: 1.5 });
             const canvas = document.createElement('canvas');
             canvas.width = viewport.width;
             canvas.height = viewport.height;
             const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             await page.render({ canvasContext: ctx, viewport }).promise;
-            const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+            const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.85));
             blob._ganttName = f.name + (pdfDoc.numPages > 1 ? ' – p' + pi : '');
             expandedBlobs.push(blob);
           }
@@ -34366,6 +34387,7 @@ async function saveDraft() {
         type: file.type,
         data: await _fileToBase64(file),
         caption: cap ? cap.value : '',
+        rotation: mediaFiles[k].rotation || 0,
       };
     }
   }
@@ -34533,7 +34555,7 @@ async function loadDraft(event) {
       const m = draft.media[k];
       const blob = _base64ToBlob(m.data, m.type);
       const f = new File([blob], m.name, { type: m.type });
-      mediaFiles[k] = { file: f, url: URL.createObjectURL(f), caption: m.caption };
+      mediaFiles[k] = { file: f, url: URL.createObjectURL(f), caption: m.caption, rotation: m.rotation || 0 };
     }
     if (typeof rebuildMedia === 'function') rebuildMedia();
     // After rebuild, set the caption text on each visible cap field
@@ -35693,29 +35715,55 @@ async function generateDOCX() {
           const idx = r*cols+c;
           const cellChildren = [];
           if (mediaFiles[idx]) {
-            const imgBytes = await fileToUint8(mediaFiles[idx].file);
-            const ext = mediaFiles[idx].file.name.split('.').pop().toLowerCase();
-            const imgType = ext==='jpg'||ext==='jpeg' ? 'jpg' : 'png';
-            // Read natural dimensions to preserve actual aspect ratio
+            // 1. Read natural dims (browser applies EXIF correction)
             const naturalDims = await new Promise(resolve => {
               const _im = new Image();
               _im.onload = () => resolve({ w: _im.naturalWidth, h: _im.naturalHeight });
               _im.onerror = () => resolve({ w: 4, h: 3 });
               _im.src = mediaFiles[idx].url;
             });
-            // Width fills the column; for portrait photos cap height so that
-            // `rows` rows fit on one A4 page (portrait page ≈ 257mm content).
-            // Landscape photos (w > h) always fill the full column width.
+            // 2. Apply user rotation: swap effective dims for 90°/270°
+            const _photoRot = mediaFiles[idx].rotation || 0;
+            const _effW = (_photoRot===90||_photoRot===270) ? naturalDims.h : naturalDims.w;
+            const _effH = (_photoRot===90||_photoRot===270) ? naturalDims.w : naturalDims.h;
+            // 3. Calculate display size (portrait cap if effective h > w)
             let _dispW = Math.round(imgW / 9525);
-            let _dispH = Math.round(_dispW * naturalDims.h / naturalDims.w);
-            if (naturalDims.h > naturalDims.w) {
-              // Portrait: cap height so `rows` rows fit with heading + captions
+            let _dispH = Math.round(_dispW * _effH / _effW);
+            if (_effH > _effW) {
               const _maxH = Math.floor(((257 - 30 - rows * 10) / rows) / 25.4 * 96);
-              if (_dispH > _maxH) {
-                _dispH = _maxH;
-                _dispW = Math.round(_maxH * naturalDims.w / naturalDims.h);
-              }
+              if (_dispH > _maxH) { _dispH = _maxH; _dispW = Math.round(_maxH * _effW / _effH); }
             }
+            // 4. Resample + rotate via canvas → JPEG 85%
+            const imgType = 'jpg';
+            const imgBytes = await new Promise(resolve => {
+              const cvs = document.createElement('canvas');
+              cvs.width = _dispW; cvs.height = _dispH;
+              const ctx2 = cvs.getContext('2d');
+              ctx2.fillStyle = '#ffffff';
+              ctx2.fillRect(0, 0, _dispW, _dispH);
+              const _img2 = new Image();
+              _img2.onload = () => {
+                if (_photoRot === 0) {
+                  ctx2.drawImage(_img2, 0, 0, _dispW, _dispH);
+                } else {
+                  ctx2.translate(_dispW/2, _dispH/2);
+                  ctx2.rotate(_photoRot * Math.PI / 180);
+                  if (_photoRot === 90 || _photoRot === 270) {
+                    // Pre-rotation image occupies _dispH × _dispW in rotated space
+                    ctx2.drawImage(_img2, -_dispH/2, -_dispW/2, _dispH, _dispW);
+                  } else { // 180°
+                    ctx2.drawImage(_img2, -_dispW/2, -_dispH/2, _dispW, _dispH);
+                  }
+                }
+                const dataUrl = cvs.toDataURL('image/jpeg', 0.85);
+                const b64 = dataUrl.split(',')[1];
+                const bin = atob(b64);
+                const arr = new Uint8Array(bin.length);
+                for (let bi=0; bi<bin.length; bi++) arr[bi] = bin.charCodeAt(bi);
+                resolve(arr);
+              };
+              _img2.src = mediaFiles[idx].url;
+            });
             cellChildren.push(new Paragraph({
               alignment: AlignmentType.CENTER,
               spacing:{before:40,after:20},
