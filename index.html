@@ -33845,6 +33845,20 @@ function calcTotals(){
   document.getElementById('tot-grand').textContent=fmtNum(net);
 }
 
+let bdmCount=0;
+function addBDM(){
+  bdmCount++;
+  const n=bdmCount;
+  const tr=document.createElement('tr');
+  tr.id='bdm-'+n;
+  tr.innerHTML=`<td style="color:#999;font-size:13px">${n}</td>
+    <td><input type="text" placeholder="Decision required from the owner"></td>
+    <td><input type="date"></td>
+    <td><select><option>High</option><option>Medium</option><option>Low</option></select></td>
+    <td><button class="del-btn" onclick="this.closest('tr').remove()">&times;</button></td>`;
+  document.getElementById('bdm-body').appendChild(tr);
+}
+
 let mediaFiles={}, videoFiles={};
 
 function rebuildMedia(){
