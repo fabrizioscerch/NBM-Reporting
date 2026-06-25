@@ -65,10 +65,10 @@ table.data-table td input,table.data-table td select{padding:6px 8px;font-size:1
 .media-controls{display:flex;gap:16px;align-items:flex-end;margin-bottom:16px}
 .media-controls .fl{margin:0;flex:1}
 .media-grid{display:grid;gap:10px;margin-bottom:12px}
-.media-slot{border:1px dashed #d0d2d6;border-radius:8px;aspect-ratio:4/3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;background:#fafbfc;position:relative;overflow:hidden}
-.media-slot:hover{border-color:#1c3548;background:#f5f7f9}
-.media-slot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.media-slot input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.media-slot{border-radius:4px;position:relative;overflow:visible}
+
+
+
 .media-slot-label{font-size:11px;color:#bbb}
 .caption-grid{display:grid;gap:8px;margin-top:4px}
 .caption-grid input{font-size:12px;padding:6px 10px}
@@ -33854,7 +33854,7 @@ function rebuildMedia(){
     const slot = document.createElement('div');
     slot.className = 'media-slot';
     slot.dataset.idx = i;
-    slot.style.cssText = 'position:relative;border-radius:4px;overflow:visible;aspect-ratio:3/4;';
+    slot.style.cssText = 'position:relative;border-radius:4px;overflow:visible;border:none;background:transparent;display:block;';
 
     if(mediaFiles[i]){
       const _rot = mediaFiles[i].rotation||0;
