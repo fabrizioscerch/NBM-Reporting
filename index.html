@@ -35487,10 +35487,7 @@ async function generateDOCX() {
   const tocEntries = [];
   const _paintOn = document.getElementById('paint-cb').checked;
   const _intOn   = document.getElementById('int-cb').checked;
-  const _cols = parseInt(document.getElementById('media-cols').value);
-  const _rows = parseInt(document.getElementById('media-rows').value);
-  const _total = _cols * _rows;
-  const _hasMedia = Object.keys(mediaFiles).filter(k => k<_total && mediaFiles[k]).length > 0
+  const _hasMedia = Object.keys(mediaFiles).filter(k => mediaFiles[k]).length > 0
                  || Object.keys(videoFiles).filter(k => videoFiles[k]).length > 0;
   const _bdmOn = document.getElementById('bdm-cb').checked;
   const _coOn  = document.getElementById('co-cb').checked;
