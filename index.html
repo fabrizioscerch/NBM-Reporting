@@ -35702,90 +35702,65 @@ async function generateDOCX() {
       const photoMM = photoCellW / 56.7;
       const photoPx = Math.round(photoMM / 25.4 * 96);
 
-      // Resize photo via canvas — accepts JPEG or PNG output (both smaller than original)
+      // Resize photo via blob URL (avoids Safari canvas taint with data: URLs)
       async function resizePhoto(mf, photoRot) {
         const dw = photoPx;
+        if (!mf || !mf.file) return null;
         return new Promise((resolve) => {
-          const fr = new FileReader();
-          fr.onload = (ev) => {
-            const dataUrl = ev.target.result;
-            const img = new Image();
-            img.onload = () => {
-              const nw = img.naturalWidth  || 4;
-              const nh = img.naturalHeight || 3;
-              const ew = (photoRot===90||photoRot===270) ? nh : nw;
-              const eh = (photoRot===90||photoRot===270) ? nw : nh;
-              const dh = Math.round(dw * eh / ew);
-              const cw = dw * 2, ch = dh * 2;  // 2× for ~192dpi
-
-              function tryCanvas() {
-                try {
-                  const cvs = document.createElement('canvas');
-                  cvs.width = cw; cvs.height = ch;
-                  const ctx = cvs.getContext('2d');
-                  if (!ctx) return false;
-                  ctx.fillStyle = '#ffffff';
-                  ctx.fillRect(0, 0, cw, ch);
-                  if (photoRot === 0) {
-                    ctx.drawImage(img, 0, 0, cw, ch);
-                  } else {
-                    ctx.translate(cw/2, ch/2);
-                    ctx.rotate(photoRot * Math.PI / 180);
-                    if (photoRot===90||photoRot===270) ctx.drawImage(img,-ch/2,-cw/2,ch,cw);
-                    else ctx.drawImage(img,-cw/2,-ch/2,cw,ch);
-                  }
-                  // Accept JPEG or PNG — both are smaller than original at resized dims
-                  const jpgUrl = cvs.toDataURL('image/jpeg', 0.85);
-                  if (jpgUrl && jpgUrl.length > 100 && !jpgUrl.startsWith('data:,')) {
-                    const isJpeg = jpgUrl.startsWith('data:image/jpeg');
-                    const b64 = jpgUrl.split(',')[1];
-                    if (!b64) return false;
-                    const bin = atob(b64);
-                    const arr = new Uint8Array(bin.length);
-                    for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
-                    resolve({ bytes: arr, dw, dh, type: isJpeg ? 'jpg' : 'png' });
-                    return true;
-                  }
-                  // Try toBlob
-                  cvs.toBlob((blob) => {
-                    if (!blob || blob.size < 100) { resolve(null); return; }
-                    const fr2 = new FileReader();
-                    fr2.onload = (e2) => {
-                      const u = e2.target.result;
-                      if (!u || u.length < 100) { resolve(null); return; }
-                      const isJpeg = u.startsWith('data:image/jpeg');
-                      const b64 = u.split(',')[1];
-                      const bin = atob(b64);
-                      const arr = new Uint8Array(bin.length);
-                      for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
-                      resolve({ bytes: arr, dw, dh, type: isJpeg ? 'jpg' : 'png' });
-                    };
-                    fr2.onerror = () => resolve(null);
-                    fr2.readAsDataURL(blob);
-                  }, 'image/jpeg', 0.85);
-                  return true;  // toBlob is async, will resolve later
-                } catch(e) { return false; }
+          const blobUrl = URL.createObjectURL(mf.file);
+          const img = new Image();
+          img.onload = () => {
+            const nw = img.naturalWidth  || 4;
+            const nh = img.naturalHeight || 3;
+            const ew = (photoRot===90||photoRot===270) ? nh : nw;
+            const eh = (photoRot===90||photoRot===270) ? nw : nh;
+            const dh = Math.round(dw * eh / ew);
+            const cw = dw * 2, ch = dh * 2;
+            let resolved = false;
+            try {
+              const cvs = document.createElement('canvas');
+              cvs.width = cw; cvs.height = ch;
+              const ctx = cvs.getContext('2d');
+              if (!ctx) throw new Error('no ctx');
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, cw, ch);
+              if (photoRot === 0) {
+                ctx.drawImage(img, 0, 0, cw, ch);
+              } else {
+                ctx.translate(cw/2, ch/2);
+                ctx.rotate(photoRot * Math.PI / 180);
+                if (photoRot===90||photoRot===270) ctx.drawImage(img,-ch/2,-cw/2,ch,cw);
+                else ctx.drawImage(img,-cw/2,-ch/2,cw,ch);
               }
-
-              if (!tryCanvas()) {
-                // Canvas completely failed — embed original bytes at display size
-                const b64 = dataUrl.split(',')[1] || '';
-                const bin = atob(b64);
-                const arr = new Uint8Array(bin.length);
+              const outUrl = cvs.toDataURL('image/jpeg', 0.85);
+              if (outUrl && outUrl.length > 200 && !outUrl.startsWith('data:,')) {
+                URL.revokeObjectURL(blobUrl);
+                const isJpeg = outUrl.startsWith('data:image/jpeg');
+                const b64 = outUrl.split(',')[1];
+                const bin = atob(b64); const arr = new Uint8Array(bin.length);
                 for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
-                const t = dataUrl.startsWith('data:image/jpeg') ? 'jpg' : 'png';
-                resolve({ bytes: arr, dw, dh, type: t });
+                resolved = true;
+                resolve({ bytes: arr, dw, dh, type: isJpeg?'jpg':'png' });
               }
-            };
-            img.onerror = () => resolve(null);
-            img.src = dataUrl;
+            } catch(e) { /* fall through to FileReader */ }
+            if (!resolved) {
+              URL.revokeObjectURL(blobUrl);
+              const fr = new FileReader();
+              fr.onload = ev => {
+                const orig = ev.target.result;
+                const b64 = orig.split(',')[1] || '';
+                const bin = atob(b64); const arr = new Uint8Array(bin.length);
+                for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+                resolve({ bytes: arr, dw, dh, type: orig.startsWith('data:image/jpeg')?'jpg':'png' });
+              };
+              fr.onerror = () => resolve(null);
+              fr.readAsDataURL(mf.file);
+            }
           };
-          fr.onerror = () => resolve(null);
-          if (mf && mf.file) fr.readAsDataURL(mf.file);
-          else resolve(null);
+          img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(null); };
+          img.src = blobUrl;
         });
       }
-
       for (let r=0; r<rows; r++) {
         const rowCells = [];
 
