@@ -35703,8 +35703,19 @@ async function generateDOCX() {
               _im.onerror = () => resolve({ w: 4, h: 3 });
               _im.src = mediaFiles[idx].url;
             });
-            const _dispW = Math.round(imgW / 9525);
-            const _dispH = Math.round(_dispW * naturalDims.h / naturalDims.w);
+            // Width fills the column; for portrait photos cap height so that
+            // `rows` rows fit on one A4 page (portrait page ≈ 257mm content).
+            // Landscape photos (w > h) always fill the full column width.
+            let _dispW = Math.round(imgW / 9525);
+            let _dispH = Math.round(_dispW * naturalDims.h / naturalDims.w);
+            if (naturalDims.h > naturalDims.w) {
+              // Portrait: cap height so `rows` rows fit with heading + captions
+              const _maxH = Math.floor(((257 - 30 - rows * 10) / rows) / 25.4 * 96);
+              if (_dispH > _maxH) {
+                _dispH = _maxH;
+                _dispW = Math.round(_maxH * naturalDims.w / naturalDims.h);
+              }
+            }
             cellChildren.push(new Paragraph({
               alignment: AlignmentType.CENTER,
               spacing:{before:40,after:20},
