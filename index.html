@@ -35693,11 +35693,92 @@ async function generateDOCX() {
       const imgWmm = 170 / cols;
       const imgW = imgWmm / 25.4 * 914400; // EMU via inches
 
-      // Each photo pair → one 2-row table (image row + navy caption row)
-      // Using data: URL for canvas so Safari doesn't taint it
+      // Photo layout: 3-col table per pair [photo | gap | photo] + caption row
+      // Photos sized to fit cell interior. Canvas→JPEG via toDataURL then toBlob fallback.
       const blueBorder = { style: BorderStyle.SINGLE, size: 18, color: '5B7E96' };
-      const cellW = Math.floor(9500 / cols);
-      const gapDxa = mm2dxa(4);
+      const GAP_MM = 8;
+      const gapDxa = mm2dxa(GAP_MM);
+      const photoCellW = Math.floor((9500 - gapDxa) / 2); // width per photo column
+      const photoMM = photoCellW / 56.7;                  // mm
+      const photoPx = Math.round(photoMM / 25.4 * 96);    // display px at 96 dpi
+
+      // Compress one photo to JPEG via canvas; fallback to original bytes
+      async function photoToJpeg(mf, photoRot) {
+        const colPx = photoPx;
+        const SCALE = 2;
+        return new Promise((resolve) => {
+          const fr = new FileReader();
+          fr.onload = (ev) => {
+            const dataUrl = ev.target.result;
+            const img = new Image();
+            img.onload = () => {
+              const nw = img.naturalWidth  || 4;
+              const nh = img.naturalHeight || 3;
+              const ew = (photoRot===90||photoRot===270) ? nh : nw;
+              const eh = (photoRot===90||photoRot===270) ? nw : nh;
+              const dw = colPx;
+              const dh = Math.round(dw * eh / ew);
+              const cw = dw * SCALE, ch = dh * SCALE;
+              try {
+                const cvs = document.createElement('canvas');
+                cvs.width = cw; cvs.height = ch;
+                const ctx = cvs.getContext('2d');
+                if (!ctx) throw new Error('no 2d ctx');
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0,0,cw,ch);
+                if (photoRot === 0) {
+                  ctx.drawImage(img, 0, 0, cw, ch);
+                } else {
+                  ctx.translate(cw/2, ch/2);
+                  ctx.rotate(photoRot * Math.PI / 180);
+                  if (photoRot===90||photoRot===270) ctx.drawImage(img,-ch/2,-cw/2,ch,cw);
+                  else ctx.drawImage(img,-cw/2,-ch/2,cw,ch);
+                }
+                // Try toDataURL first
+                const jpgUrl = cvs.toDataURL('image/jpeg', 0.85);
+                if (jpgUrl && jpgUrl.startsWith('data:image/jpeg')) {
+                  const b64 = jpgUrl.split(',')[1];
+                  const bin = atob(b64);
+                  const arr = new Uint8Array(bin.length);
+                  for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+                  resolve({ bytes: arr, dw, dh });
+                  return;
+                }
+                // toDataURL didn't return JPEG - try toBlob
+                cvs.toBlob((blob) => {
+                  if (!blob) { useFallback(); return; }
+                  const fr2 = new FileReader();
+                  fr2.onload = (e2) => {
+                    const u = e2.target.result;
+                    if (u && u.startsWith('data:image/jpeg')) {
+                      const b64 = u.split(',')[1];
+                      const bin = atob(b64);
+                      const arr = new Uint8Array(bin.length);
+                      for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+                      resolve({ bytes: arr, dw, dh });
+                    } else { useFallback(); }
+                  };
+                  fr2.onerror = useFallback;
+                  fr2.readAsDataURL(blob);
+                }, 'image/jpeg', 0.85);
+              } catch(e) { useFallback(); }
+
+              function useFallback() {
+                const b64 = dataUrl.split(',')[1] || '';
+                const bin = atob(b64);
+                const arr = new Uint8Array(bin.length);
+                for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+                resolve({ bytes: arr, dw, dh });
+              }
+            };
+            img.onerror = () => resolve({ bytes: new Uint8Array(0), dw: colPx, dh: colPx });
+            img.src = dataUrl;
+          };
+          fr.onerror = () => resolve({ bytes: new Uint8Array(0), dw: photoPx, dh: photoPx });
+          if (mf && mf.file) fr.readAsDataURL(mf.file);
+          else resolve({ bytes: new Uint8Array(0), dw: photoPx, dh: photoPx });
+        });
+      }
 
       for (let r=0; r<rows; r++) {
         const imgCells = [];
@@ -35705,117 +35786,66 @@ async function generateDOCX() {
 
         for (let ci=0; ci<cols; ci++) {
           const idx = r*cols+ci;
-          const hasPh = !!(mediaFiles[idx] && mediaFiles[idx].url);
+          const mf = mediaFiles[idx];
+          const hasPh = !!(mf && mf.url);
+
+          if (ci === 1) {
+            // Insert gap spacer column between the two photos
+            imgCells.push(new TableCell({
+              width: { size: gapDxa, type: WidthType.DXA },
+              borders: noBorders,
+              margins:{top:0,bottom:0,left:0,right:0},
+              children: [emptyPara()],
+            }));
+            capCells.push(new TableCell({
+              width: { size: gapDxa, type: WidthType.DXA },
+              borders: noBorders,
+              margins:{top:0,bottom:0,left:0,right:0},
+              children: [emptyPara()],
+            }));
+          }
+
           let imgPara = emptyPara();
-
           if (hasPh) {
-            const _photoRot = mediaFiles[idx].rotation || 0;
-            const _colPx = Math.round(imgW / 9525);
-            const PRINT_SCALE = 2.5;
-            const { bytes: imgBytes, dw: _dispW, dh: _dispH } = await new Promise((res) => {
-              // Load via data: URL to avoid canvas taint on Safari local files
-              const _fr = new FileReader();
-              _fr.onload = (ev) => {
-                const dataUrl = ev.target.result;
-                const _img2 = new Image();
-                _img2.onload = () => {
-                  try {
-                    const nw = _img2.naturalWidth  || 4;
-                    const nh = _img2.naturalHeight || 3;
-                    const ew = (_photoRot===90||_photoRot===270) ? nh : nw;
-                    const eh = (_photoRot===90||_photoRot===270) ? nw : nh;
-                    const dw = _colPx;
-                    const dh = Math.round(dw * eh / ew);
-                    const cw = Math.round(dw * PRINT_SCALE);
-                    const ch = Math.round(dh * PRINT_SCALE);
-                    const cvs = document.createElement('canvas');
-                    cvs.width = cw; cvs.height = ch;
-                    const ctx2 = cvs.getContext('2d');
-                    ctx2.fillStyle = '#ffffff';
-                    ctx2.fillRect(0, 0, cw, ch);
-                    if (_photoRot === 0) {
-                      ctx2.drawImage(_img2, 0, 0, cw, ch);
-                    } else {
-                      ctx2.translate(cw/2, ch/2);
-                      ctx2.rotate(_photoRot * Math.PI / 180);
-                      if (_photoRot === 90 || _photoRot === 270) {
-                        ctx2.drawImage(_img2, -ch/2, -cw/2, ch, cw);
-                      } else {
-                        ctx2.drawImage(_img2, -cw/2, -ch/2, cw, ch);
-                      }
-                    }
-                    const jpegUrl = cvs.toDataURL('image/jpeg', 0.85);
-                    const b64 = jpegUrl.split(',')[1];
-                    if (!b64) throw new Error('toDataURL empty');
-                    const bin = atob(b64);
-                    const arr = new Uint8Array(bin.length);
-                    for (let bi=0; bi<bin.length; bi++) arr[bi] = bin.charCodeAt(bi);
-                    res({ bytes: arr, dw, dh });
-                  } catch(e) {
-                    // Last-resort: embed original bytes at display dimensions
-                    const b64 = dataUrl.split(',')[1] || '';
-                    const bin = atob(b64);
-                    const arr = new Uint8Array(bin.length);
-                    for (let bi=0; bi<bin.length; bi++) arr[bi] = bin.charCodeAt(bi);
-                    const nw2 = _img2.naturalWidth || 4;
-                    const nh2 = _img2.naturalHeight || 3;
-                    res({ bytes: arr, dw: _colPx, dh: Math.round(_colPx * nh2 / nw2) });
-                  }
-                };
-                _img2.onerror = () => {
-                  const b64 = dataUrl.split(',')[1] || '';
-                  const bin = atob(b64); const arr = new Uint8Array(bin.length);
-                  for (let bi=0;bi<bin.length;bi++) arr[bi]=bin.charCodeAt(bi);
-                  res({ bytes: arr, dw: _colPx, dh: _colPx });
-                };
-                _img2.src = dataUrl;
-              };
-              _fr.onerror = () => res({ bytes: new Uint8Array(0), dw: _colPx, dh: _colPx });
-              if (mediaFiles[idx].file) _fr.readAsDataURL(mediaFiles[idx].file);
-              else res({ bytes: new Uint8Array(0), dw: _colPx, dh: _colPx });
-            });
-
+            const { bytes: imgBytes, dw: _dw, dh: _dh } = await photoToJpeg(mf, mf.rotation||0);
             if (imgBytes.length > 0) {
               imgPara = new Paragraph({
                 alignment: AlignmentType.CENTER,
                 spacing:{before:0,after:0},
-                children: [new ImageRun({ type:'jpg', data: imgBytes, transformation:{ width:_dispW, height:_dispH } })],
+                children:[new ImageRun({ type:'jpg', data: imgBytes, transformation:{ width:_dw, height:_dh } })],
               });
             }
           }
 
-          // Image cell: top+left+right blue border only
           imgCells.push(new TableCell({
-            width: { size: cellW, type: WidthType.DXA },
-            borders: hasPh ? { top:blueBorder, left:blueBorder, right:blueBorder, bottom:noBorder } : noBorders,
-            margins: { top: hasPh?40:0, bottom:0, left: hasPh?gapDxa:0, right: hasPh?gapDxa:0 },
+            width: { size: photoCellW, type: WidthType.DXA },
+            borders: hasPh ? { top:blueBorder,left:blueBorder,right:blueBorder,bottom:noBorder } : noBorders,
+            margins:{top:0,bottom:0,left:0,right:0},
             children: [imgPara],
           }));
 
-          // Caption cell: navy + left+right+bottom blue border, no top
           const capEl = document.getElementById('cap-'+idx);
           const capText = capEl ? capEl.value.trim() : '';
           capCells.push(new TableCell({
-            width: { size: cellW, type: WidthType.DXA },
-            borders: hasPh ? { top:noBorder, left:blueBorder, right:blueBorder, bottom:blueBorder } : noBorders,
+            width: { size: photoCellW, type: WidthType.DXA },
+            borders: hasPh ? { top:noBorder,left:blueBorder,right:blueBorder,bottom:blueBorder } : noBorders,
             shading: hasPh ? { fill:'1c3548', type:ShadingType.CLEAR, color:'1c3548' } : undefined,
-            margins: { top: hasPh?40:0, bottom: hasPh?40:0, left: hasPh?60:0, right: hasPh?60:0 },
-            children: [new Paragraph({
-              alignment: AlignmentType.CENTER,
+            margins:{top: hasPh?40:0, bottom: hasPh?40:0, left: hasPh?60:0, right: hasPh?60:0},
+            children:[new Paragraph({
+              alignment:AlignmentType.CENTER,
               spacing:{before:0,after:0},
-              children: hasPh ? [new TextRun({ text: capText||'', color:'FFFFFF', size:16, font:'Calibri' })] : [],
+              children: hasPh ? [new TextRun({ text:capText||'', color:'FFFFFF', size:16, font:'Calibri' })] : [],
             })],
           }));
         }
 
-        // One table per pair with both rows — borders connect cleanly
         s6Children.push(new Table({
-          width: { size:9500, type: WidthType.DXA },
-          columnWidths: Array(cols).fill(cellW),
+          width:{ size:9500, type:WidthType.DXA },
+          columnWidths: [photoCellW, gapDxa, photoCellW],
           borders: noBorders,
-          rows: [
-            new TableRow({ children: imgCells }),
-            new TableRow({ children: capCells }),
+          rows:[
+            new TableRow({ children: imgCells, cantSplit: true }),
+            new TableRow({ children: capCells, cantSplit: true }),
           ],
         }));
         s6Children.push(emptyPara());
