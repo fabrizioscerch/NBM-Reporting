@@ -34368,7 +34368,11 @@ async function loadDraft(event) {
       const el = document.getElementById(id);
       if (el) {
         el.value = draft.selects[id];
-        el.dispatchEvent(new Event('change'));
+        // Skip media-grid selects — rebuildMedia() is called explicitly after
+        // mediaFiles is populated, so firing it here (with empty mediaFiles) is wrong
+        if (id !== 'media-cols' && id !== 'media-rows') {
+          el.dispatchEvent(new Event('change'));
+        }
       }
     }
 
