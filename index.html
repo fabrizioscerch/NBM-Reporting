@@ -33531,33 +33531,7 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
       <span class="chevron" id="ch-s6">&#8964;</span>
     </div>
     <div class="card-body" id="b-s6">
-      <div class="media-controls">
-        <div class="fl"><label>Columns</label>
-          <select id="media-cols" onchange="rebuildMedia()">
-            <option value="1">1 column</option>
-            <option value="2" selected>2 columns</option>
-            <option value="3">3 columns</option>
-          </select>
-        </div>
-        <div class="fl"><label>Rows</label>
-          <select id="media-rows" onchange="rebuildMedia()">
-            <option value="1">1 row</option>
-            <option value="2" selected>2 rows</option>
-            <option value="3">3 rows</option>
-            <option value="4">4 rows</option>
-            <option value="5">5 rows</option>
-          </select>
-          <script>
-            (function(){
-              const sel=document.getElementById('media-rows');
-              for(let i=6;i<=100;i++){
-                const o=document.createElement('option');
-                o.value=i; o.textContent=i+' rows'; sel.appendChild(o);
-              }
-            })();
-          </script>
-        </div>
-      </div>
+
       <div id="media-grid"></div>
       <div id="media-captions"></div>
       <div class="fl" style="margin-top:16px">
@@ -33862,110 +33836,121 @@ function addBDM(){
 let mediaFiles={}, videoFiles={};
 
 function rebuildMedia(){
-  const cols=parseInt(document.getElementById('media-cols').value);
-  const rows=parseInt(document.getElementById('media-rows').value);
-  const total=cols*rows;
-  const grid=document.getElementById('media-grid');
-  grid.style.gridTemplateColumns=`repeat(${cols},1fr)`;
-  grid.style.display='grid';
-  grid.style.gap='12px';
-  grid.innerHTML='';
-  document.getElementById('media-captions').innerHTML='';
+  const COLS = 2;
+  const filledCount = Object.keys(mediaFiles).filter(k=>mediaFiles[k]).length;
+  const rows = Math.max(1, Math.ceil((filledCount + 1) / COLS));
+  const total = COLS * rows;
+  const grid = document.getElementById('media-grid');
+  grid.style.gridTemplateColumns = `repeat(${COLS},1fr)`;
+  grid.style.display = 'grid'; grid.style.gap = '8px';
+  grid.innerHTML = '';
+  document.getElementById('media-captions').innerHTML = '';
+  let dragSrcIdx = null;
 
-  let dragSrcIdx=null;
+  for(let i=0; i<total; i++){
+    const cell = document.createElement('div');
+    cell.style.cssText = 'display:flex;flex-direction:column;gap:0;';
 
-  for(let i=0;i<total;i++){
-    const cell=document.createElement('div');
-    cell.style.cssText='display:flex;flex-direction:column;gap:6px;';
-
-    const slot=document.createElement('div');
-    slot.className='media-slot';
-    slot.dataset.idx=i;
+    const slot = document.createElement('div');
+    slot.className = 'media-slot';
+    slot.dataset.idx = i;
+    slot.style.cssText = 'position:relative;border-radius:4px;overflow:visible;aspect-ratio:3/4;';
 
     if(mediaFiles[i]){
-      // Filled slot: show image, remove button, enable drag
-      const _rot=mediaFiles[i].rotation||0;
-      const img=document.createElement('img');
-      img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:inherit;pointer-events:none;transform:rotate('+_rot+'deg);';
+      const _rot = mediaFiles[i].rotation||0;
+
+      // Blue border wrapper
+      const frame = document.createElement('div');
+      frame.style.cssText = 'position:relative;border:3px solid #5B7E96;border-bottom:none;border-radius:4px 4px 0 0;overflow:hidden;aspect-ratio:3/4;';
+
+      const img = document.createElement('img');
+      img.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;transform:rotate('+_rot+'deg);';
       img.addEventListener('load',()=>{
         if(img.naturalWidth && img.naturalHeight){
-          const r=mediaFiles[i].rotation||0;
-          if(r===90||r===270){
-            slot.style.aspectRatio=(img.naturalHeight/img.naturalWidth).toFixed(3);
-          } else {
-            slot.style.aspectRatio=(img.naturalWidth/img.naturalHeight).toFixed(3);
-          }
+          const r = mediaFiles[i].rotation||0;
+          const ratio = (r===90||r===270)
+            ? img.naturalHeight/img.naturalWidth
+            : img.naturalWidth/img.naturalHeight;
+          frame.style.aspectRatio = ratio.toFixed(3);
         }
       });
-      img.src=mediaFiles[i].url;
-      slot.appendChild(img);
+      img.src = mediaFiles[i].url;
+      frame.appendChild(img);
 
-      // Remove (x) button
-      const rmBtn=document.createElement('button');
-      rmBtn.innerHTML='&times;';
-      rmBtn.title='Remove photo';
-      rmBtn.style.cssText='position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(0,0,0,0.6);color:#fff;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;padding:0;';
+      // Remove button
+      const rmBtn = document.createElement('button');
+      rmBtn.innerHTML = '&times;';
+      rmBtn.title = 'Remove photo';
+      rmBtn.style.cssText = 'position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(0,0,0,0.6);color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;padding:0;';
       rmBtn.addEventListener('click',e=>{
         e.stopPropagation();
         if(mediaFiles[i]&&mediaFiles[i].url) URL.revokeObjectURL(mediaFiles[i].url);
         delete mediaFiles[i];
         rebuildMedia();
       });
-      slot.appendChild(rmBtn);
+      frame.appendChild(rmBtn);
 
-      // Rotate (↻) button — fix EXIF/upload orientation
-      const rotBtn=document.createElement('button');
-      rotBtn.innerHTML='&#8635;';
-      rotBtn.title='Rotate 90°';
-      rotBtn.style.cssText='position:absolute;bottom:5px;right:5px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(0,0,0,0.6);color:#fff;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;padding:0;';
+      // Rotate button
+      const rotBtn = document.createElement('button');
+      rotBtn.innerHTML = '&#8635;';
+      rotBtn.title = 'Rotate 90°';
+      rotBtn.style.cssText = 'position:absolute;bottom:5px;right:5px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(0,0,0,0.6);color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;padding:0;';
       rotBtn.addEventListener('click',e=>{
         e.stopPropagation();
-        mediaFiles[i].rotation=((mediaFiles[i].rotation||0)+90)%360;
+        mediaFiles[i].rotation = ((mediaFiles[i].rotation||0)+90)%360;
         rebuildMedia();
       });
-      slot.appendChild(rotBtn);
+      frame.appendChild(rotBtn);
 
-      // Drag hint bar
-      const dragHint=document.createElement('div');
-      dragHint.title='Drag to reorder';
-      dragHint.style.cssText='position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:28px;height:4px;border-radius:2px;background:rgba(255,255,255,0.7);cursor:grab;pointer-events:none;';
-      slot.appendChild(dragHint);
-
-      slot.draggable=true;
-      slot.style.cursor='grab';
-      slot.addEventListener('dragstart',e=>{
-        dragSrcIdx=i;
-        e.dataTransfer.effectAllowed='move';
-        e.dataTransfer.setData('text/plain',String(i));
-        setTimeout(()=>slot.style.opacity='0.45',0);
+      frame.draggable = true;
+      frame.style.cursor = 'grab';
+      frame.addEventListener('dragstart',e=>{
+        dragSrcIdx = i;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', String(i));
+        setTimeout(()=>frame.style.opacity='0.45',0);
       });
-      slot.addEventListener('dragend',()=>{ slot.style.opacity=''; });
+      frame.addEventListener('dragend',()=>{ frame.style.opacity=''; });
+
+      slot.appendChild(frame);
+
+      // Navy caption band (always visible, editable)
+      const band = document.createElement('div');
+      band.style.cssText = 'background:#1c3548;border:3px solid #5B7E96;border-top:none;border-radius:0 0 4px 4px;padding:4px 8px;';
+      const capInp = document.createElement('input');
+      capInp.type = 'text';
+      capInp.placeholder = 'Caption…';
+      capInp.id = 'cap-'+i;
+      capInp.style.cssText = 'width:100%;background:transparent;border:none;outline:none;color:#fff;font-size:11px;text-align:center;font-family:Calibri,sans-serif;';
+      capInp.value = (mediaFiles[i]&&mediaFiles[i].caption)||'';
+      capInp.addEventListener('change',e=>{ if(mediaFiles[i]) mediaFiles[i].caption=e.target.value; });
+      band.appendChild(capInp);
+      slot.appendChild(band);
 
     } else {
-      // Empty slot: placeholder + file input
-      slot.innerHTML=`<svg width="22" height="22" fill="none" stroke="#ccc" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span class="media-slot-label">Add photo</span>`;
-      const inp=document.createElement('input');
-      inp.type='file'; inp.accept='image/*';
-      inp.style.cssText='position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;';
+      // Empty slot
+      slot.style.cssText += 'border:2px dashed #ccc;border-radius:4px;aspect-ratio:3/4;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;background:#fafafa;';
+      slot.innerHTML = `<svg width="22" height="22" fill="none" stroke="#ccc" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span class="media-slot-label">Add photo</span>`;
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'image/*';
+      inp.style.cssText = 'position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;';
       inp.addEventListener('change',e=>{
         const f=e.target.files[0]; if(!f) return;
-        mediaFiles[i]={file:f,url:URL.createObjectURL(f),caption:''};
+        mediaFiles[i]={file:f,url:URL.createObjectURL(f),caption:'',rotation:0};
         rebuildMedia();
       });
       slot.appendChild(inp);
     }
 
-    // Drop target on every slot
+    // Drop target (external files + reorder)
     slot.addEventListener('dragover',e=>{
       e.preventDefault();
-      e.dataTransfer.dropEffect=(e.dataTransfer.files&&e.dataTransfer.types&&e.dataTransfer.types.includes('Files'))?'copy':'move';
+      e.dataTransfer.dropEffect=(e.dataTransfer.types&&e.dataTransfer.types.includes('Files'))?'copy':'move';
       slot.style.outline='2px dashed #5B7E95';
     });
     slot.addEventListener('dragleave',()=>{ slot.style.outline=''; });
     slot.addEventListener('drop',e=>{
-      e.preventDefault();
-      slot.style.outline='';
-      // External file drop from file system
+      e.preventDefault(); slot.style.outline='';
       if(dragSrcIdx===null && e.dataTransfer.files && e.dataTransfer.files.length>0){
         const f=e.dataTransfer.files[0];
         if(f.type.startsWith('image/')){
@@ -33976,7 +33961,6 @@ function rebuildMedia(){
         return;
       }
       if(dragSrcIdx===null||dragSrcIdx===i) return;
-      // Slot-to-slot reorder
       const srcCap=document.getElementById('cap-'+dragSrcIdx);
       const dstCap=document.getElementById('cap-'+i);
       const tmpCapVal=srcCap?srcCap.value:'';
@@ -33990,14 +33974,7 @@ function rebuildMedia(){
       rebuildMedia();
     });
 
-    const cap=document.createElement('input');
-    cap.type='text'; cap.placeholder='Caption (optional)';
-    cap.id='cap-'+i;
-    cap.style.cssText='font-size:12px;padding:5px 8px;border:1px solid #e0e2e6;border-radius:6px;width:100%;';
-    cap.value=(mediaFiles[i]&&mediaFiles[i].caption)||'';
-    cap.addEventListener('change',e=>{ if(mediaFiles[i]) mediaFiles[i].caption=e.target.value; });
     cell.appendChild(slot);
-    cell.appendChild(cap);
     grid.appendChild(cell);
   }
 }
@@ -34384,8 +34361,7 @@ async function saveDraft() {
   });
 
   // Media files
-  draft.mediaGridCols = (document.getElementById('media-cols')||{}).value;
-  draft.mediaGridRows = (document.getElementById('media-rows')||{}).value;
+  // cols/rows removed — 2 cols fixed, rows auto
   for (const k in mediaFiles) {
     if (mediaFiles[k] && mediaFiles[k].file) {
       const file = mediaFiles[k].file;
@@ -34486,7 +34462,7 @@ async function loadDraft(event) {
         el.value = draft.selects[id];
         // Skip media-grid selects — rebuildMedia() is called explicitly after
         // mediaFiles is populated, so firing it here (with empty mediaFiles) is wrong
-        if (id !== 'media-cols' && id !== 'media-rows') {
+        if (true) {
           el.dispatchEvent(new Event('change'));
         }
       }
@@ -34556,8 +34532,7 @@ async function loadDraft(event) {
     });
 
     // Restore media grid dimensions, files, and captions
-    if (draft.mediaGridCols) document.getElementById('media-cols').value = draft.mediaGridCols;
-    if (draft.mediaGridRows) document.getElementById('media-rows').value = draft.mediaGridRows;
+    // cols/rows removed — 2 cols fixed
     for (const k of Object.keys(mediaFiles)) delete mediaFiles[k];
     for (const k in (draft.media || {})) {
       const m = draft.media[k];
@@ -35705,10 +35680,10 @@ async function generateDOCX() {
   // ══════════════════════════════════════════════════════════════════════════
   //  SECTION 3 – PROGRESS MEDIA
   // ══════════════════════════════════════════════════════════════════════════
-  const cols = parseInt(document.getElementById('media-cols').value);
-  const rows = parseInt(document.getElementById('media-rows').value);
-  const total = cols * rows;
-  const hasPhotos = Object.keys(mediaFiles).filter(k=>k<total && mediaFiles[k]).length > 0;
+  const cols = 2; // fixed 2 columns
+  const photoKeys = Object.keys(mediaFiles).map(Number).filter(k=>mediaFiles[k]).sort((a,b)=>a-b);
+  const rows = photoKeys.length > 0 ? Math.ceil((Math.max(...photoKeys)+1)/2) : 0;
+  const hasPhotos = photoKeys.length > 0;
   const hasVideos = Object.keys(videoFiles).filter(k=>videoFiles[k]).length > 0;
   const hasMedia  = hasPhotos || hasVideos;
 
@@ -35802,15 +35777,44 @@ async function generateDOCX() {
           } else {
             cellChildren.push(emptyPara());
           }
+          // Build inner framed table: photo row + navy caption band, blue border
           const cap = document.getElementById('cap-'+idx);
-          if (cap && cap.value) {
-            cellChildren.push(para(cap.value, { color:GRAY, size:16, italic:true, align:AlignmentType.CENTER, spacing:{before:0,after:40} }));
+          const capText = cap ? cap.value.trim() : '';
+          const blueBorder = { style: BorderStyle.SINGLE, size: 18, color: '5B7E96' }; // 18/8 = 2.25pt ≈ 3px
+          const innerRows = [];
+          if(mediaFiles[idx]){
+            innerRows.push(new TableRow({ children:[
+              new TableCell({
+                borders:{ top:blueBorder,left:blueBorder,right:blueBorder,bottom:noBorder },
+                margins:{top:0,bottom:0,left:0,right:0},
+                children: cellChildren,
+              })
+            ]}));
           }
+          innerRows.push(new TableRow({ children:[
+            new TableCell({
+              borders:{ top:noBorder,left:blueBorder,right:blueBorder,bottom:blueBorder },
+              shading:{ fill:'1c3548', type:ShadingType.CLEAR, color:'1c3548' },
+              margins:{top:40,bottom:40,left:60,right:60},
+              children:[
+                new Paragraph({
+                  alignment:AlignmentType.CENTER,
+                  spacing:{before:0,after:0},
+                  children:[ new TextRun({ text: capText||'', color:'FFFFFF', size:16, font:'Calibri' }) ],
+                })
+              ],
+            })
+          ]}));
+          const photoFrameTable = new Table({
+            width:{ size:Math.floor(9500/cols)-mm2dxa(8), type:WidthType.DXA },
+            columnWidths:[Math.floor(9500/cols)-mm2dxa(8)],
+            rows: innerRows,
+          });
           rowCells.push(new TableCell({
             width: { size: Math.floor(9500/cols), type: WidthType.DXA },
             borders: noBorders,
-            margins:{top:40,bottom:40,left:80,right:80},
-            children: cellChildren,
+            margins:{top:mm2dxa(2),bottom:mm2dxa(2),left:mm2dxa(4),right:mm2dxa(4)},
+            children: mediaFiles[idx] ? [photoFrameTable] : [emptyPara()],
           }));
         }
         s6Children.push(new Table({
@@ -35821,84 +35825,116 @@ async function generateDOCX() {
       }
     }
 
-    // ── Videos ──────────────────────────────────────────────────────────────
-    if (hasVideos) {
-      pb.textContent = 'Embedding videos…';
-      s6Children.push(hasPhotos ? emptyPara() : new Paragraph({ spacing:{before:0,after:0} }));
-      s6Children.push(para("Videos", { bold:true, color:NAVY, size:22, spacing:{before:80,after:40} }));
-
-      // Build play-button icon PNG via canvas
-      const playIconBytes = await new Promise(resolve => {
-        const cvs = document.createElement('canvas');
-        cvs.width = 120; cvs.height = 120;
-        const ctx = cvs.getContext('2d');
-        ctx.fillStyle = '#1c3548';
-        ctx.beginPath(); ctx.arc(60, 60, 58, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath(); ctx.moveTo(42, 28); ctx.lineTo(42, 92); ctx.lineTo(96, 60); ctx.closePath(); ctx.fill();
-        cvs.toBlob(blob => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const b64 = reader.result.split(',')[1];
-            const bin = atob(b64);
-            const arr = new Uint8Array(bin.length);
-            for (let i=0; i<bin.length; i++) arr[i] = bin.charCodeAt(i);
-            resolve(arr);
-          };
-          reader.readAsDataURL(blob);
-        }, 'image/png');
-      });
-
-      const videoKeys = Object.keys(videoFiles).filter(k=>videoFiles[k]).sort((a,b)=>a-b);
-      const vCols = Math.min(videoKeys.length, 4);
-      const vCellW = Math.floor(9500 / vCols);
-      const iconPx = 80; // icon display size in px (≈ 21mm)
-
-      // Group into rows of vCols
-      for (let r=0; r<Math.ceil(videoKeys.length/vCols); r++) {
-        const rowCells = [];
-        for (let c=0; c<vCols; c++) {
-          const ki = r*vCols + c;
-          const k  = videoKeys[ki];
-          const vf = k !== undefined ? videoFiles[k] : null;
-          const cellChildren = [];
-          if (vf) {
-            const label = vf.caption || '';
-            if (label) {
-              cellChildren.push(para(label, { color:GRAY, size:18, italic:true, align:AlignmentType.CENTER, spacing:{before:40,after:12} }));
-            }
-            cellChildren.push(new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing:{before: label ? 0 : 60, after:60},
-              children: [
-                new ExternalHyperlink({
-                  link: vf.link || vf.name || '',
-                  children: [ new TextRun({ text: '▶  Open video', color:'2864A0', underline:{}, size:28, font:'Calibri', bold:true }) ],
-                }),
-              ],
-            }));
-          } else {
-            cellChildren.push(emptyPara());
-          }
-          rowCells.push(new TableCell({
-            width: { size: vCellW, type: WidthType.DXA },
-            borders: noBorders,
-            margins:{top:40,bottom:40,left:80,right:80},
-            children: cellChildren,
-          }));
-        }
-        s6Children.push(new Table({
-          width: { size:9500, type: WidthType.DXA },
-          columnWidths: Array(vCols).fill(vCellW),
-          rows: [ new TableRow({ children: rowCells }) ],
-        }));
-      }
-    }
-
     sections.push({
       ...buildSectionProps({ withFooter: true }),
       children: s6Children,
     });
+
+    // ── Videos — separate page ───────────────────────────────────────────────
+    if (hasVideos) {
+      pb.textContent = 'Embedding videos…';
+      const videoKeys = Object.keys(videoFiles).filter(k=>videoFiles[k]).sort((a,b)=>a-b);
+      const vCols = Math.min(videoKeys.length, 4);
+      const vCellW = Math.floor(9500 / vCols);
+      const vCardWmm = 170 / vCols - 8;
+      const vCardW = Math.round(vCardWmm / 25.4 * 914400 / 9525); // display px
+      const vCardH = Math.round(vCardW * 0.75);
+      const vBandH = Math.round(vCardW * 0.13);
+      const blueBorder = { style: BorderStyle.SINGLE, size: 18, color: '5B7E96' };
+
+      // Build navy card + play icon via canvas
+      async function makeVideoCardBytes(caption) {
+        const cw = vCardW, ch = vCardH;
+        const bh = vBandH;
+        const cvs = document.createElement('canvas');
+        cvs.width = cw; cvs.height = ch;
+        const ctx = cvs.getContext('2d');
+        ctx.fillStyle = '#1c3548';
+        ctx.fillRect(0,0,cw,ch);
+        const cx=cw/2, cy=ch/2, r=Math.min(cw,ch)*0.18;
+        ctx.fillStyle='rgba(255,255,255,0.12)';
+        ctx.beginPath();ctx.arc(cx,cy,r*1.25,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='rgba(255,255,255,0.88)';
+        ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#1c3548';
+        const ps=r*0.48;
+        ctx.beginPath();ctx.moveTo(cx-ps*0.58,cy-ps*0.85);ctx.lineTo(cx-ps*0.58,cy+ps*0.85);ctx.lineTo(cx+ps*0.95,cy);ctx.closePath();ctx.fill();
+        return new Promise(res=>{
+          const dataUrl=cvs.toDataURL('image/jpeg',0.9);
+          const b64=dataUrl.split(',')[1];
+          const bin=atob(b64); const arr=new Uint8Array(bin.length);
+          for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+          res(arr);
+        });
+      }
+
+      const s7Children = [ sectionAnchor("sec3v"), sectionHeading("3b. Videos"), emptyPara() ];
+
+      for (let r=0; r<Math.ceil(videoKeys.length/vCols); r++) {
+        const rowCells = [];
+        for (let cv=0; cv<vCols; cv++) {
+          const ki=r*vCols+cv; const k=videoKeys[ki];
+          const vf=k!==undefined?videoFiles[k]:null;
+          if(vf){
+            const cardBytes = await makeVideoCardBytes(vf.caption||'');
+            const capText = vf.caption||'';
+            const innerRows=[
+              new TableRow({ children:[
+                new TableCell({
+                  borders:{top:blueBorder,left:blueBorder,right:blueBorder,bottom:noBorder},
+                  margins:{top:0,bottom:0,left:0,right:0},
+                  children:[
+                    new Paragraph({
+                      alignment:AlignmentType.CENTER,spacing:{before:0,after:0},
+                      children:[
+                        new ExternalHyperlink({
+                          link:vf.link||vf.name||'',
+                          children:[new ImageRun({type:'jpg',data:cardBytes,transformation:{width:vCardW,height:vCardH}})],
+                        }),
+                      ],
+                    }),
+                  ],
+                })
+              ]}),
+              new TableRow({ children:[
+                new TableCell({
+                  borders:{top:noBorder,left:blueBorder,right:blueBorder,bottom:blueBorder},
+                  shading:{fill:'1c3548',type:ShadingType.CLEAR,color:'1c3548'},
+                  margins:{top:40,bottom:40,left:60,right:60},
+                  children:[
+                    new Paragraph({
+                      alignment:AlignmentType.CENTER,spacing:{before:0,after:0},
+                      children:[new TextRun({text:capText,color:'FFFFFF',size:16,font:'Calibri'})],
+                    })
+                  ],
+                })
+              ]}),
+            ];
+            rowCells.push(new TableCell({
+              width:{size:vCellW,type:WidthType.DXA},
+              borders:noBorders,
+              margins:{top:mm2dxa(2),bottom:mm2dxa(2),left:mm2dxa(4),right:mm2dxa(4)},
+              children:[new Table({
+                width:{size:vCellW-mm2dxa(8),type:WidthType.DXA},
+                columnWidths:[vCellW-mm2dxa(8)],
+                rows:innerRows,
+              })],
+            }));
+          } else {
+            rowCells.push(new TableCell({width:{size:vCellW,type:WidthType.DXA},borders:noBorders,children:[emptyPara()]}));
+          }
+        }
+        s7Children.push(new Table({
+          width:{size:9500,type:WidthType.DXA},
+          columnWidths:Array(vCols).fill(vCellW),
+          rows:[new TableRow({children:rowCells})],
+        }));
+      }
+      sections.push({
+        ...buildSectionProps({ withFooter: true }),
+        children: s7Children,
+      });
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════════════
