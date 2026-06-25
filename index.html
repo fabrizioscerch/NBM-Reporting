@@ -35696,17 +35696,24 @@ async function generateDOCX() {
       const imgWmm = 170 / cols;
       const imgW = imgWmm / 25.4 * 914400; // EMU via inches
 
+      // Photo pairs: image row + caption band row (no nested tables)
+      const blueBorder = { style: BorderStyle.SINGLE, size: 18, color: '5B7E96' };
+      const cellW = Math.floor(9500 / cols);
+      const gapDxa = mm2dxa(4); // 4mm each side = 8mm gap between columns
+
       for (let r=0; r<rows; r++) {
-        const rowCells = [];
-        for (let c=0; c<cols; c++) {
-          const idx = r*cols+c;
-          const cellChildren = [];
-          if (mediaFiles[idx]) {
-            // Single image load: measure dims, resample + rotate → JPEG 85%
-            // Canvas is drawn at PRINT_SCALE × display px for good print quality (~240 DPI)
+        const imgCells = [];
+        const capCells = [];
+
+        for (let ci=0; ci<cols; ci++) {
+          const idx = r*cols+ci;
+          const hasPh = !!(mediaFiles[idx]);
+          let imgPara = emptyPara();
+
+          if (hasPh) {
             const _photoRot = mediaFiles[idx].rotation || 0;
-            const _colPx = Math.round(imgW / 9525); // column width in display px (96 DPI)
-            const PRINT_SCALE = 2.5; // canvas at 2.5× → ~240 DPI effective
+            const _colPx = Math.round(imgW / 9525);
+            const PRINT_SCALE = 2.5;
             const { bytes: imgBytes, dw: _dispW, dh: _dispH } = await new Promise((res) => {
               const _img2 = new Image();
               _img2.onload = () => {
@@ -35717,8 +35724,6 @@ async function generateDOCX() {
                   const eh = (_photoRot===90||_photoRot===270) ? nw : nh;
                   let dw = _colPx;
                   let dh = Math.round(dw * eh / ew);
-                  // No portrait height cap — photos fill column width and span pages naturally
-                  // Canvas at print resolution
                   const cw = Math.round(dw * PRINT_SCALE);
                   const ch = Math.round(dh * PRINT_SCALE);
                   const cvs = document.createElement('canvas');
@@ -35745,7 +35750,6 @@ async function generateDOCX() {
                   for (let bi=0; bi<bin.length; bi++) arr[bi] = bin.charCodeAt(bi);
                   res({ bytes: arr, dw, dh });
                 } catch(e) {
-                  // Fallback: read file bytes directly (no resampling)
                   const fr = new FileReader();
                   fr.onload = ev => {
                     const b64 = ev.target.result.split(',')[1] || '';
@@ -35762,66 +35766,55 @@ async function generateDOCX() {
               _img2.onerror = () => res({ bytes: new Uint8Array(0), dw: _colPx, dh: _colPx });
               _img2.src = mediaFiles[idx].url;
             });
-            const imgType = 'jpg';
-            cellChildren.push(new Paragraph({
+            if (imgBytes.length > 0) {
+              imgPara = new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing:{before:0,after:0},
+                children: [new ImageRun({ type:'jpg', data: imgBytes, transformation:{ width:_dispW, height:_dispH } })],
+              });
+            }
+          }
+
+          // Image cell: top+left+right blue border, no bottom border
+          imgCells.push(new TableCell({
+            width: { size: cellW, type: WidthType.DXA },
+            borders: hasPh
+              ? { top:blueBorder, left:blueBorder, right:blueBorder, bottom:noBorder }
+              : noBorders,
+            margins: { top: hasPh ? 40 : 0, bottom: 0, left: hasPh ? gapDxa : 0, right: hasPh ? gapDxa : 0 },
+            children: [imgPara],
+          }));
+
+          // Caption cell: navy band, left+right+bottom blue border, no top border
+          const capEl = document.getElementById('cap-'+idx);
+          const capText = capEl ? capEl.value.trim() : '';
+          capCells.push(new TableCell({
+            width: { size: cellW, type: WidthType.DXA },
+            borders: hasPh
+              ? { top:noBorder, left:blueBorder, right:blueBorder, bottom:blueBorder }
+              : noBorders,
+            shading: hasPh ? { fill:'1c3548', type:ShadingType.CLEAR, color:'1c3548' } : undefined,
+            margins: { top: hasPh ? 40 : 0, bottom: hasPh ? 40 : 0, left: hasPh ? 60 : 0, right: hasPh ? 60 : 0 },
+            children: [new Paragraph({
               alignment: AlignmentType.CENTER,
-              spacing:{before:40,after:20},
-              children: [
-                new ImageRun({
-                  type: imgType,
-                  data: imgBytes,
-                  transformation: { width: _dispW, height: _dispH },
-                }),
-              ],
-            }));
-          } else {
-            cellChildren.push(emptyPara());
-          }
-          // Build inner framed table: photo row + navy caption band, blue border
-          const cap = document.getElementById('cap-'+idx);
-          const capText = cap ? cap.value.trim() : '';
-          const blueBorder = { style: BorderStyle.SINGLE, size: 18, color: '5B7E96' }; // 18/8 = 2.25pt ≈ 3px
-          const innerRows = [];
-          if(mediaFiles[idx]){
-            innerRows.push(new TableRow({ children:[
-              new TableCell({
-                borders:{ top:blueBorder,left:blueBorder,right:blueBorder,bottom:noBorder },
-                margins:{top:0,bottom:0,left:0,right:0},
-                children: cellChildren,
-              })
-            ]}));
-          }
-          innerRows.push(new TableRow({ children:[
-            new TableCell({
-              borders:{ top:noBorder,left:blueBorder,right:blueBorder,bottom:blueBorder },
-              shading:{ fill:'1c3548', type:ShadingType.CLEAR, color:'1c3548' },
-              margins:{top:40,bottom:40,left:60,right:60},
-              children:[
-                new Paragraph({
-                  alignment:AlignmentType.CENTER,
-                  spacing:{before:0,after:0},
-                  children:[ new TextRun({ text: capText||'', color:'FFFFFF', size:16, font:'Calibri' }) ],
-                })
-              ],
-            })
-          ]}));
-          const photoFrameTable = new Table({
-            width:{ size:Math.floor(9500/cols)-mm2dxa(8), type:WidthType.DXA },
-            columnWidths:[Math.floor(9500/cols)-mm2dxa(8)],
-            rows: innerRows,
-          });
-          rowCells.push(new TableCell({
-            width: { size: Math.floor(9500/cols), type: WidthType.DXA },
-            borders: noBorders,
-            margins:{top:mm2dxa(2),bottom:mm2dxa(2),left:mm2dxa(4),right:mm2dxa(4)},
-            children: mediaFiles[idx] ? [photoFrameTable] : [emptyPara()],
+              spacing:{before:0,after:0},
+              children: hasPh ? [new TextRun({ text: capText||'', color:'FFFFFF', size:16, font:'Calibri' })] : [],
+            })],
           }));
         }
+
+        // Push image row then caption band row
         s6Children.push(new Table({
           width: { size:9500, type: WidthType.DXA },
-          columnWidths: Array(cols).fill(Math.floor(9500/cols)),
-          rows: [ new TableRow({ children: rowCells }) ],
+          columnWidths: Array(cols).fill(cellW),
+          rows: [ new TableRow({ children: imgCells }) ],
         }));
+        s6Children.push(new Table({
+          width: { size:9500, type: WidthType.DXA },
+          columnWidths: Array(cols).fill(cellW),
+          rows: [ new TableRow({ children: capCells }) ],
+        }));
+        s6Children.push(emptyPara()); // gap between photo pairs
       }
     }
 
