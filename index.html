@@ -35713,7 +35713,13 @@ async function generateDOCX() {
 
   if (hasMedia) {
     pb.textContent = 'Embedding photos…';
-    const s6Children = [ sectionAnchor("sec3"), sectionHeading("3. Progress Media"), new Paragraph({ spacing: { before: 0, after: 40, line: 20, lineRule: "exact" }, children: [new TextRun({ size: 2 })] }) ];
+    // Heading gets its own section (no verticalAlign) so it stays at the top
+    const s6HeadChildren = [ sectionAnchor("sec3"), sectionHeading("3. Progress Media") ];
+    sections.push({
+      ...buildSectionProps({ withFooter: true }),
+      children: s6HeadChildren,
+    });
+    const s6Children = [];
 
     // ── Photos ──────────────────────────────────────────────────────────────
     if (hasPhotos) {
@@ -35905,7 +35911,7 @@ async function generateDOCX() {
     if (hasVideos) {
       pb.textContent = 'Embedding videos…';
       const videoKeys = Object.keys(videoFiles).filter(k=>videoFiles[k]).sort((a,b)=>a-b);
-      const vCols = Math.min(videoKeys.length, 4);
+      const vCols = 2;  // always 2 columns for bigger previews
       const vCellW = Math.floor(9500 / vCols);
       const vCardWmm = 170 / vCols - 8;
       const vCardW = Math.round(vCardWmm / 25.4 * 914400 / 9525); // display px
