@@ -35713,14 +35713,6 @@ async function generateDOCX() {
 
   if (hasMedia) {
     pb.textContent = 'Embedding photos…';
-    // Heading gets its own section (no verticalAlign) so it stays at the top
-    const s6HeadChildren = [ sectionAnchor("sec3"), sectionHeading("3. Progress Media") ];
-    sections.push({
-      ...buildSectionProps({ withFooter: true }),
-      children: s6HeadChildren,
-    });
-    const s6Children = [];
-
     // ── Photos ──────────────────────────────────────────────────────────────
     if (hasPhotos) {
       const imgWmm = 170 / cols;
@@ -35859,12 +35851,19 @@ async function generateDOCX() {
           img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(null); };
           img.src = blobUrl;
         });
-      }      for (let r=0; r<rows; r++) {
+      }
+
+      // Build tables into array so we can split them across sections
+      const photoRowTables = [];
+      // Packing: iterate packed indices (photoKeys[n]) not absolute slot numbers
+      const packedRows = Math.ceil(photoKeys.length / cols);
+      for (let r=0; r<packedRows; r++) {
         const rowCells = [];
 
         for (let ci=0; ci<cols; ci++) {
-          const idx = r*cols+ci;
-          const mf = mediaFiles[idx];
+          const pkIdx = r*cols+ci;           // packed position
+          const slotKey = photoKeys[pkIdx];  // original slot key (undefined if last row is odd)
+          const mf = slotKey !== undefined ? mediaFiles[slotKey] : null;
           const hasPh = !!(mf && mf.url);
 
           if (ci === 1) {
@@ -35892,7 +35891,7 @@ async function generateDOCX() {
               cellChildren.push(emptyPara());
             }
             // Navy caption paragraph inside same cell — stays with image
-            const capEl = document.getElementById('cap-'+idx);
+            const capEl = slotKey !== undefined ? document.getElementById('cap-'+slotKey) : null;
             const capText = capEl ? capEl.value.trim() : '';
             cellChildren.push(new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -35912,24 +35911,43 @@ async function generateDOCX() {
           }));
         }
 
-        s6Children.push(new Table({
+        photoRowTables.push(new Table({
           width:{ size:9500, type:WidthType.DXA },
           columnWidths: [photoCellW, gapDxa, photoCellW],
           borders: noBorders,
           rows:[ new TableRow({ children: rowCells, cantSplit: true }) ],
         }));
-        // 10mm gap between photo rows (vertical breathing room)
-        s6Children.push(new Paragraph({ spacing: { before: 0, after: 0, line: 567, lineRule: 'exact' }, children: [new TextRun({ size: 2 })] }));
       }
-    }
 
-    // Photos section: vertically centered content on each page
-    const _s6props = buildSectionProps({ withFooter: true });
-    _s6props.properties.verticalAlign = VerticalAlign.CENTER;
-    sections.push({
-      ..._s6props,
-      children: s6Children,
-    });
+      // Spacer paragraph between photo rows (10mm)
+      const rowSpacer = () => new Paragraph({ spacing: { before: 0, after: 0, line: 567, lineRule: 'exact' }, children: [new TextRun({ size: 2 })] });
+
+      // Section 1: heading + first 2 rows (4 photos) — no verticalAlign so heading stays at top
+      const ROWS_PER_PAGE = 2;
+      const s6Page1 = [ sectionAnchor("sec3"), sectionHeading("3. Progress Media"),
+        new Paragraph({ spacing: { before: 0, after: 40, line: 20, lineRule: "exact" }, children: [new TextRun({ size: 2 })] }) ];
+      for (let r = 0; r < Math.min(ROWS_PER_PAGE, photoRowTables.length); r++) {
+        if (r > 0) s6Page1.push(rowSpacer());
+        s6Page1.push(photoRowTables[r]);
+      }
+      sections.push({ ...buildSectionProps({ withFooter: true }), children: s6Page1 });
+
+      // Section 2 (only if >4 photos): remaining rows, vertically centered per page
+      if (photoRowTables.length > ROWS_PER_PAGE) {
+        const s6Rest = [];
+        for (let r = ROWS_PER_PAGE; r < photoRowTables.length; r++) {
+          if (r > ROWS_PER_PAGE) s6Rest.push(rowSpacer());
+          s6Rest.push(photoRowTables[r]);
+        }
+        const _s6props = buildSectionProps({ withFooter: true });
+        _s6props.properties.verticalAlign = VerticalAlign.CENTER;
+        sections.push({ ..._s6props, children: s6Rest });
+      }
+    } else {
+      // No photos — push just the heading
+      sections.push({ ...buildSectionProps({ withFooter: true }),
+        children: [ sectionAnchor("sec3"), sectionHeading("3. Progress Media") ] });
+    }
 
     // ── Videos — separate page ───────────────────────────────────────────────
     if (hasVideos) {
