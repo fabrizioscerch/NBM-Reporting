@@ -35757,12 +35757,13 @@ async function generateDOCX() {
               else ctx.drawImage(bitmap,-cw/2,-ch/2,cw,ch);
             }
             bitmap.close();
-            const blob = await offscreen.convertToBlob({ type: 'image/jpeg', quality: 0.82 });
+            const blob = await offscreen.convertToBlob({ type: 'image/jpeg', quality: 0.72 });
             if (blob && blob.size > 100) {
               const arr = new Uint8Array(await blob.arrayBuffer());
+              console.log(`[Photo] OffscreenCanvas OK — ${Math.round(blob.size/1024)}KB (${cw}×${ch}→JPEG)`);
               return { bytes: arr, dw, dh, type: 'jpg' };
             }
-          } catch(_e) { /* fall through to canvas path */ }
+          } catch(_e) { console.warn('[Photo] OffscreenCanvas failed:', _e); /* fall through */ }
         }
 
         // ── Path 2: Blob URL + regular canvas (works on Chrome/Firefox)
@@ -35792,7 +35793,7 @@ async function generateDOCX() {
                 if (photoRot===90||photoRot===270) ctx.drawImage(img,-ch/2,-cw/2,ch,cw);
                 else ctx.drawImage(img,-cw/2,-ch/2,cw,ch);
               }
-              const outUrl = cvs.toDataURL('image/jpeg', 0.82);
+              const outUrl = cvs.toDataURL('image/jpeg', 0.72);
               if (outUrl && outUrl.length > 200 && !outUrl.startsWith('data:,')) {
                 URL.revokeObjectURL(blobUrl);
                 const isJpeg = outUrl.startsWith('data:image/jpeg');
@@ -35812,6 +35813,7 @@ async function generateDOCX() {
                 const b64 = orig.split(',')[1] || '';
                 const bin = atob(b64); const arr = new Uint8Array(bin.length);
                 for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+                console.warn(`[Photo] ⚠️ FileReader fallback used — ${Math.round(arr.length/1024)}KB UNCOMPRESSED`);
                 resolve({ bytes: arr, dw, dh, type: orig.startsWith('data:image/jpeg')?'jpg':'png' });
               };
               fr.onerror = () => resolve(null);
