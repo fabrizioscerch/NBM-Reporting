@@ -35872,13 +35872,16 @@ async function generateDOCX() {
           borders: noBorders,
           rows:[ new TableRow({ children: rowCells, cantSplit: true }) ],
         }));
-        // Truly minimal 1pt-tall paragraph between photo pairs
-        s6Children.push(new Paragraph({ spacing: { before: 0, after: 0, line: 20, lineRule: 'exact' }, children: [new TextRun({ size: 2 })] }));
+        // 10mm gap between photo rows (vertical breathing room)
+        s6Children.push(new Paragraph({ spacing: { before: 0, after: 0, line: 567, lineRule: 'exact' }, children: [new TextRun({ size: 2 })] }));
       }
     }
 
+    // Photos section: vertically centered content on each page
+    const _s6props = buildSectionProps({ withFooter: true });
+    _s6props.properties.verticalAlign = VerticalAlign.CENTER;
     sections.push({
-      ...buildSectionProps({ withFooter: true }),
+      ..._s6props,
       children: s6Children,
     });
 
