@@ -35722,8 +35722,10 @@ async function generateDOCX() {
       // Each photo cell contains image + navy caption paragraph (keeps them together)
       const blueBorder = { style: BorderStyle.SINGLE, size: 18, color: '5B7E96' };
       const GAP_MM = 8;
+      const PHOTO_SCALE = 0.9;  // 90% of page width for photos
+      const totalPhotoW = Math.round(9500 * PHOTO_SCALE); // 8550 DXA
       const gapDxa = mm2dxa(GAP_MM);
-      const photoCellW = Math.floor((9500 - gapDxa) / 2);
+      const photoCellW = Math.floor((totalPhotoW - gapDxa) / 2);
       const photoMM = photoCellW / 56.7;
       const photoPx = Math.round(photoMM / 25.4 * 96);
 
@@ -35912,7 +35914,8 @@ async function generateDOCX() {
         }
 
         photoRowTables.push(new Table({
-          width:{ size:9500, type:WidthType.DXA },
+          width:{ size:totalPhotoW, type:WidthType.DXA },
+          alignment: AlignmentType.CENTER,
           columnWidths: [photoCellW, gapDxa, photoCellW],
           borders: noBorders,
           rows:[ new TableRow({ children: rowCells, cantSplit: true }) ],
@@ -35922,14 +35925,37 @@ async function generateDOCX() {
       // Spacer paragraph between photo rows (10mm)
       const rowSpacer = () => new Paragraph({ spacing: { before: 0, after: 0, line: 567, lineRule: 'exact' }, children: [new TextRun({ size: 2 })] });
 
-      // Section 1: heading + first 2 rows (4 photos) — no verticalAlign so heading stays at top
+      // Page 1: heading at top + photos vertically centered in remaining space
+      // Available after heading (~12mm): 252mm - 12mm = 240mm → 13608 DXA
       const ROWS_PER_PAGE = 2;
-      const s6Page1 = [ sectionAnchor("sec3"), sectionHeading("3. Progress Media"),
-        new Paragraph({ spacing: { before: 0, after: 40, line: 20, lineRule: "exact" }, children: [new TextRun({ size: 2 })] }) ];
+      const wrapperH = Math.round(13608); // 240mm in DXA — cell height for centering
+
+      const page1Photos = [];
       for (let r = 0; r < Math.min(ROWS_PER_PAGE, photoRowTables.length); r++) {
-        if (r > 0) s6Page1.push(rowSpacer());
-        s6Page1.push(photoRowTables[r]);
+        if (r > 0) page1Photos.push(rowSpacer());
+        page1Photos.push(photoRowTables[r]);
       }
+
+      const s6Page1 = [
+        sectionAnchor("sec3"),
+        sectionHeading("3. Progress Media"),
+        new Paragraph({ spacing: { before: 0, after: 0, line: 20, lineRule: 'exact' }, children: [new TextRun({ size: 2 })] }),
+        new Table({
+          width: { size: 9500, type: WidthType.DXA },
+          columnWidths: [9500],
+          borders: noBorders,
+          rows: [new TableRow({
+            height: { value: wrapperH, rule: 'exact' },
+            cantSplit: true,
+            children: [new TableCell({
+              borders: noBorders,
+              margins: { top: 0, bottom: 0, left: 0, right: 0 },
+              verticalAlign: VerticalAlign.CENTER,
+              children: page1Photos,
+            })],
+          })],
+        }),
+      ];
       sections.push({ ...buildSectionProps({ withFooter: true }), children: s6Page1 });
 
       // Section 2 (only if >4 photos): remaining rows, vertically centered per page
