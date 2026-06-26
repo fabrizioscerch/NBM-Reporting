@@ -35760,8 +35760,13 @@ async function generateDOCX() {
             const blob = await offscreen.convertToBlob({ type: 'image/jpeg', quality: 0.72 });
             if (blob && blob.size > 100) {
               const arr = new Uint8Array(await blob.arrayBuffer());
-              console.log(`[Photo] OffscreenCanvas OK — ${Math.round(blob.size/1024)}KB (${cw}×${ch}→JPEG)`);
-              return { bytes: arr, dw, dh, type: 'jpg' };
+              // Safari ignores type:'image/jpeg' and outputs PNG — check magic bytes
+              if (arr[0] === 0xFF && arr[1] === 0xD8) {
+                console.log(`[Photo] OffscreenCanvas→JPEG OK — ${Math.round(arr.length/1024)}KB (${cw}×${ch})`);
+                return { bytes: arr, dw, dh, type: 'jpg' };
+              }
+              // Not JPEG (Safari produced PNG) — fall through to Path 2
+              console.warn('[Photo] OffscreenCanvas produced PNG not JPEG — falling to Path 2');
             }
           } catch(_e) { console.warn('[Photo] OffscreenCanvas failed:', _e); /* fall through */ }
         }
@@ -35800,6 +35805,7 @@ async function generateDOCX() {
                 const b64 = outUrl.split(',')[1];
                 const bin = atob(b64); const arr = new Uint8Array(bin.length);
                 for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+                console.log(`[Photo] Canvas→${isJpeg?'JPEG':'PNG'} OK — ${Math.round(arr.length/1024)}KB (${cw}×${ch})`);
                 resolved = true;
                 resolve({ bytes: arr, dw, dh, type: isJpeg?'jpg':'png' });
               }
