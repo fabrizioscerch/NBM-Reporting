@@ -35735,13 +35735,42 @@ async function generateDOCX() {
       const photoMM = photoCellW / 56.7;
       const photoPx = Math.round(photoMM / 25.4 * 96);
 
-      // Resize photo via blob URL (avoids Safari canvas taint with data: URLs)
+      // Compress a photo to JPEG at display resolution (2× for sharpness)
       async function resizePhoto(mf, photoRot) {
         if (!mf || !mf.file) return null;
         const dw = photoPx;
 
-        // ── Path 1: OffscreenCanvas + createImageBitmap (no taint, works on Safari file://)
-        if (typeof OffscreenCanvas !== 'undefined' && typeof createImageBitmap !== 'undefined') {
+        // Helper: draw bitmap to an opaque regular canvas and return JPEG bytes.
+        // alpha:false is critical — Safari outputs PNG from alpha-enabled canvases
+        // even when JPEG is requested.
+        function bitmapToJpeg(bitmap, cw, ch) {
+          const cvs = document.createElement('canvas');
+          cvs.width = cw; cvs.height = ch;
+          const ctx = cvs.getContext('2d', { alpha: false }); // opaque → JPEG works on Safari
+          if (!ctx) return null;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, cw, ch);
+          if (photoRot === 0) {
+            ctx.drawImage(bitmap, 0, 0, cw, ch);
+          } else {
+            ctx.save();
+            ctx.translate(cw/2, ch/2);
+            ctx.rotate(photoRot * Math.PI / 180);
+            if (photoRot===90||photoRot===270) ctx.drawImage(bitmap,-ch/2,-cw/2,ch,cw);
+            else ctx.drawImage(bitmap,-cw/2,-ch/2,cw,ch);
+            ctx.restore();
+          }
+          const url = cvs.toDataURL('image/jpeg', 0.72);
+          if (!url || !url.startsWith('data:image/jpeg') || url.length < 200) return null;
+          const b64 = url.split(',')[1];
+          const bin = atob(b64);
+          const arr = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+          return arr;
+        }
+
+        // ── Path 1: createImageBitmap (no canvas taint on Safari file://) ──────
+        if (typeof createImageBitmap !== 'undefined') {
           try {
             const bitmap = await createImageBitmap(mf.file);
             const nw = bitmap.width || 4;
@@ -35750,34 +35779,48 @@ async function generateDOCX() {
             const eh = (photoRot===90||photoRot===270) ? nw : nh;
             const dh = Math.round(dw * eh / ew);
             const cw = dw * 2, ch = dh * 2;
-            const offscreen = new OffscreenCanvas(cw, ch);
-            const ctx = offscreen.getContext('2d');
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, cw, ch);
-            if (photoRot === 0) {
-              ctx.drawImage(bitmap, 0, 0, cw, ch);
-            } else {
-              ctx.translate(cw/2, ch/2);
-              ctx.rotate(photoRot * Math.PI / 180);
-              if (photoRot===90||photoRot===270) ctx.drawImage(bitmap,-ch/2,-cw/2,ch,cw);
-              else ctx.drawImage(bitmap,-cw/2,-ch/2,cw,ch);
+
+            // Try OffscreenCanvas first (may produce PNG on Safari — detected below)
+            let arr = null;
+            if (typeof OffscreenCanvas !== 'undefined') {
+              try {
+                const offscreen = new OffscreenCanvas(cw, ch);
+                const octx = offscreen.getContext('2d');
+                octx.fillStyle = '#ffffff';
+                octx.fillRect(0, 0, cw, ch);
+                if (photoRot === 0) {
+                  octx.drawImage(bitmap, 0, 0, cw, ch);
+                } else {
+                  octx.translate(cw/2, ch/2);
+                  octx.rotate(photoRot * Math.PI / 180);
+                  if (photoRot===90||photoRot===270) octx.drawImage(bitmap,-ch/2,-cw/2,ch,cw);
+                  else octx.drawImage(bitmap,-cw/2,-ch/2,cw,ch);
+                }
+                const blob = await offscreen.convertToBlob({ type: 'image/jpeg', quality: 0.72 });
+                if (blob && blob.size > 100) {
+                  const tmp = new Uint8Array(await blob.arrayBuffer());
+                  if (tmp[0] === 0xFF && tmp[1] === 0xD8) {
+                    arr = tmp; // Real JPEG from OffscreenCanvas (Chrome/Firefox)
+                    console.log(`[Photo] OffscreenCanvas→JPEG — ${Math.round(arr.length/1024)}KB`);
+                  }
+                  // else: Safari produced PNG — fall through to bitmapToJpeg below
+                }
+              } catch(_oe) { /* OffscreenCanvas unavailable, continue */ }
             }
+
+            // If OffscreenCanvas didn't give JPEG: use regular canvas with alpha:false
+            if (!arr) {
+              arr = bitmapToJpeg(bitmap, cw, ch);
+              if (arr) console.log(`[Photo] Canvas(alpha:false)→JPEG — ${Math.round(arr.length/1024)}KB`);
+            }
+
             bitmap.close();
-            const blob = await offscreen.convertToBlob({ type: 'image/jpeg', quality: 0.72 });
-            if (blob && blob.size > 100) {
-              const arr = new Uint8Array(await blob.arrayBuffer());
-              // Safari ignores type:'image/jpeg' and outputs PNG — check magic bytes
-              if (arr[0] === 0xFF && arr[1] === 0xD8) {
-                console.log(`[Photo] OffscreenCanvas→JPEG OK — ${Math.round(arr.length/1024)}KB (${cw}×${ch})`);
-                return { bytes: arr, dw, dh, type: 'jpg' };
-              }
-              // Not JPEG (Safari produced PNG) — fall through to Path 2
-              console.warn('[Photo] OffscreenCanvas produced PNG not JPEG — falling to Path 2');
-            }
-          } catch(_e) { console.warn('[Photo] OffscreenCanvas failed:', _e); /* fall through */ }
+
+            if (arr) return { bytes: arr, dw, dh, type: 'jpg' };
+          } catch(_e) { console.warn('[Photo] Path1 failed:', _e); }
         }
 
-        // ── Path 2: Blob URL + regular canvas (works on Chrome/Firefox)
+        // ── Path 2: Blob URL + img element + canvas (fallback for older browsers) ──
         return new Promise((resolve) => {
           const blobUrl = URL.createObjectURL(mf.file);
           const img = new Image();
@@ -35788,44 +35831,25 @@ async function generateDOCX() {
             const eh = (photoRot===90||photoRot===270) ? nw : nh;
             const dh = Math.round(dw * eh / ew);
             const cw = dw * 2, ch = dh * 2;
+            URL.revokeObjectURL(blobUrl);
             let resolved = false;
             try {
-              const cvs = document.createElement('canvas');
-              cvs.width = cw; cvs.height = ch;
-              const ctx = cvs.getContext('2d');
-              if (!ctx) throw new Error('no ctx');
-              ctx.fillStyle = '#ffffff';
-              ctx.fillRect(0, 0, cw, ch);
-              if (photoRot === 0) {
-                ctx.drawImage(img, 0, 0, cw, ch);
-              } else {
-                ctx.translate(cw/2, ch/2);
-                ctx.rotate(photoRot * Math.PI / 180);
-                if (photoRot===90||photoRot===270) ctx.drawImage(img,-ch/2,-cw/2,ch,cw);
-                else ctx.drawImage(img,-cw/2,-ch/2,cw,ch);
-              }
-              const outUrl = cvs.toDataURL('image/jpeg', 0.72);
-              if (outUrl && outUrl.length > 200 && !outUrl.startsWith('data:,')) {
-                URL.revokeObjectURL(blobUrl);
-                const isJpeg = outUrl.startsWith('data:image/jpeg');
-                const b64 = outUrl.split(',')[1];
-                const bin = atob(b64); const arr = new Uint8Array(bin.length);
-                for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
-                console.log(`[Photo] Canvas→${isJpeg?'JPEG':'PNG'} OK — ${Math.round(arr.length/1024)}KB (${cw}×${ch})`);
+              const arr = bitmapToJpeg(img, cw, ch); // alpha:false inside helper
+              if (arr) {
+                console.log(`[Photo] Path2 canvas→JPEG — ${Math.round(arr.length/1024)}KB`);
                 resolved = true;
-                resolve({ bytes: arr, dw, dh, type: isJpeg?'jpg':'png' });
+                resolve({ bytes: arr, dw, dh, type: 'jpg' });
               }
             } catch(_e) { /* fall through to FileReader */ }
             if (!resolved) {
-              // ── Path 3: FileReader fallback (uncompressed, original file)
-              URL.revokeObjectURL(blobUrl);
+              // ── Path 3: FileReader — embeds original file uncompressed ──────────
               const fr = new FileReader();
               fr.onload = ev => {
                 const orig = ev.target.result;
                 const b64 = orig.split(',')[1] || '';
                 const bin = atob(b64); const arr = new Uint8Array(bin.length);
                 for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
-                console.warn(`[Photo] ⚠️ FileReader fallback used — ${Math.round(arr.length/1024)}KB UNCOMPRESSED`);
+                console.warn(`[Photo] ⚠️ FileReader fallback — ${Math.round(arr.length/1024)}KB UNCOMPRESSED`);
                 resolve({ bytes: arr, dw, dh, type: orig.startsWith('data:image/jpeg')?'jpg':'png' });
               };
               fr.onerror = () => resolve(null);
