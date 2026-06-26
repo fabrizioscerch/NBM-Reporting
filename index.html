@@ -35925,37 +35925,18 @@ async function generateDOCX() {
       // Spacer paragraph between photo rows (10mm)
       const rowSpacer = () => new Paragraph({ spacing: { before: 0, after: 0, line: 567, lineRule: 'exact' }, children: [new TextRun({ size: 2 })] });
 
-      // Page 1: heading at top + photos vertically centered in remaining space
-      // Available after heading (~12mm): 252mm - 12mm = 240mm → 13608 DXA
+      // Page 1: heading at top, photos below — same section, no vertical align
+      // (Word's verticalAlign applies to the whole page; heading + photos share page 1)
       const ROWS_PER_PAGE = 2;
-      const wrapperH = Math.round(13608); // 240mm in DXA — cell height for centering
-
-      const page1Photos = [];
-      for (let r = 0; r < Math.min(ROWS_PER_PAGE, photoRowTables.length); r++) {
-        if (r > 0) page1Photos.push(rowSpacer());
-        page1Photos.push(photoRowTables[r]);
-      }
-
       const s6Page1 = [
         sectionAnchor("sec3"),
         sectionHeading("3. Progress Media"),
-        new Paragraph({ spacing: { before: 0, after: 0, line: 20, lineRule: 'exact' }, children: [new TextRun({ size: 2 })] }),
-        new Table({
-          width: { size: 9500, type: WidthType.DXA },
-          columnWidths: [9500],
-          borders: noBorders,
-          rows: [new TableRow({
-            height: { value: wrapperH, rule: 'exact' },
-            cantSplit: true,
-            children: [new TableCell({
-              borders: noBorders,
-              margins: { top: 0, bottom: 0, left: 0, right: 0 },
-              verticalAlign: VerticalAlign.CENTER,
-              children: page1Photos,
-            })],
-          })],
-        }),
+        new Paragraph({ spacing: { before: 0, after: 40, line: 20, lineRule: 'exact' }, children: [new TextRun({ size: 2 })] }),
       ];
+      for (let r = 0; r < Math.min(ROWS_PER_PAGE, photoRowTables.length); r++) {
+        if (r > 0) s6Page1.push(rowSpacer());
+        s6Page1.push(photoRowTables[r]);
+      }
       sections.push({ ...buildSectionProps({ withFooter: true }), children: s6Page1 });
 
       // Section 2 (only if >4 photos): remaining rows, vertically centered per page
