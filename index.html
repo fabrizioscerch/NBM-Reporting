@@ -33519,7 +33519,7 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
       <div class="g3">
         <div class="fl"><label>Next Milestone</label><input type="text" id="next-milestone" placeholder="e.g. Main engine installation"></div>
         <div class="fl"><label>Expected Date</label><input type="date" id="next-milestone-date"></div>
-        <div class="fl"><label>Milestone Amount (€)</label><input type="text" id="milestone-amt" placeholder="e.g. 1,200,000" oninput="this.value=this.value.replace(/[^0-9,.]/g,'')"></div>
+        <div class="fl"><label>Milestone Amount (€)</label><input type="text" id="milestone-amt" placeholder="e.g. 1,200,000" oninput="this.value=this.value.replace(/[^0-9,]/g,'')"></div>
       </div>
     </div>
   </div>
@@ -33773,7 +33773,7 @@ function addCO(){
   tr.id='co-'+coCount;
   tr.innerHTML=`<td><input type="text" value="${coCount}" style="width:32px;text-align:center"></td>
     <td><input type="text" placeholder="Description"></td>
-    <td><input type="text" placeholder="0" oninput="this.value=this.value.replace(/[^0-9,.]/g,'');calcTotals()"></td>
+    <td><input type="text" placeholder="0" oninput="this.value=this.value.replace(/[^0-9,]/g,'');calcTotals()"></td>
     <td><select onchange="calcTotals()"><option value="approved">Approved</option><option value="outstanding">Outstanding</option><option value="rejected">Rejected</option></select></td>
     <td><button class="del-btn" onclick="this.closest('tr').remove();calcTotals()">&times;</button></td>`;
   document.getElementById('co-body').appendChild(tr);
@@ -33786,7 +33786,7 @@ function addCR(){
   tr.id='cr-'+crCount;
   tr.innerHTML=`<td><input type="text" value="${crCount}" style="width:32px;text-align:center"></td>
     <td><input type="text" placeholder="Description"></td>
-    <td><input type="text" placeholder="0" oninput="this.value=this.value.replace(/[^0-9,.]/g,'');calcTotals()"></td>
+    <td><input type="text" placeholder="0" oninput="this.value=this.value.replace(/[^0-9,]/g,'');calcTotals()"></td>
     <td><select onchange="calcTotals()"><option value="approved">Approved</option><option value="outstanding">Outstanding</option></select></td>
     <td><button class="del-btn" onclick="this.closest('tr').remove();calcTotals()">&times;</button></td>`;
   document.getElementById('cr-body').appendChild(tr);
