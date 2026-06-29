@@ -35068,10 +35068,17 @@ async function generateDOCX() {
     const { bold=false, italic=false, color="1a1a2e", size=20,
             align=AlignmentType.LEFT, spacing={before:40,after:40},
             font="Calibri" } = opts;
+    // Preserve line breaks from textarea input: split on \n and insert <w:br/> between lines
+    const lines = String(text ?? '').split('\n');
+    const children = [];
+    lines.forEach((line, i) => {
+      if (i > 0) children.push(new TextRun({ break: 1 }));
+      children.push(new TextRun({ text: line, bold, italic, color, size, font }));
+    });
     return new Paragraph({
       alignment: align,
       spacing,
-      children: [ new TextRun({ text, bold, italic, color, size, font }) ],
+      children,
     });
   }
 
