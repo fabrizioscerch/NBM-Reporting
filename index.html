@@ -33519,7 +33519,7 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
       <div class="g3">
         <div class="fl"><label>Next Milestone</label><input type="text" id="next-milestone" placeholder="e.g. Main engine installation"></div>
         <div class="fl"><label>Expected Date</label><input type="date" id="next-milestone-date"></div>
-        <div class="fl"><label>Milestone Amount (€)</label><input type="text" id="milestone-amt" placeholder="e.g. 1,200,000" onkeydown="if(event.key==='.')event.preventDefault()" oninput="this.value=this.value.replace(/[^0-9,]/g,'')"></div>
+        <div class="fl"><label>Milestone Amount (€)</label><input type="text" id="milestone-amt" placeholder="e.g. 1,200,000" onkeydown="if(event.key==='.'||event.key===',')event.preventDefault()" oninput="numFmtInput(this)"></div>
       </div>
     </div>
   </div>
@@ -33773,7 +33773,7 @@ function addCO(){
   tr.id='co-'+coCount;
   tr.innerHTML=`<td><input type="text" value="${coCount}" style="width:32px;text-align:center"></td>
     <td><input type="text" placeholder="Description"></td>
-    <td><input type="text" placeholder="0" onkeydown="if(event.key==='.')event.preventDefault()" onkeydown="if(event.key==='.')event.preventDefault()" oninput="this.value=this.value.replace(/[^0-9,]/g,'');calcTotals()"></td>
+    <td><input type="text" placeholder="0" onkeydown="if(event.key==='.')event.preventDefault()" onkeydown="if(event.key==='.'||event.key===',')event.preventDefault()" oninput="numFmtInput(this);calcTotals()"></td>
     <td><select onchange="calcTotals()"><option value="approved">Approved</option><option value="outstanding">Outstanding</option><option value="rejected">Rejected</option></select></td>
     <td><button class="del-btn" onclick="this.closest('tr').remove();calcTotals()">&times;</button></td>`;
   document.getElementById('co-body').appendChild(tr);
@@ -33786,7 +33786,7 @@ function addCR(){
   tr.id='cr-'+crCount;
   tr.innerHTML=`<td><input type="text" value="${crCount}" style="width:32px;text-align:center"></td>
     <td><input type="text" placeholder="Description"></td>
-    <td><input type="text" placeholder="0" onkeydown="if(event.key==='.')event.preventDefault()" oninput="this.value=this.value.replace(/[^0-9,]/g,'');calcTotals()"></td>
+    <td><input type="text" placeholder="0" onkeydown="if(event.key==='.'||event.key===',')event.preventDefault()" oninput="numFmtInput(this);calcTotals()"></td>
     <td><select onchange="calcTotals()"><option value="approved">Approved</option><option value="outstanding">Outstanding</option></select></td>
     <td><button class="del-btn" onclick="this.closest('tr').remove();calcTotals()">&times;</button></td>`;
   document.getElementById('cr-body').appendChild(tr);
@@ -33795,6 +33795,11 @@ function addCR(){
 
 function getCurrency(){ return document.getElementById('sel-currency')?.value||'€'; }
 function fmtNum(n){ return getCurrency()+Math.round(n).toLocaleString('en-US'); }
+function numFmtInput(el) {
+  // Strip everything except digits, then re-insert thousand commas
+  const digits = el.value.replace(/[^0-9]/g, '');
+  el.value = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
 function updateCurrencySymbol(){
   // Update labels on milestone amount placeholder
   document.getElementById('milestone-amt').placeholder='e.g. 1,200,000';
@@ -36317,8 +36322,13 @@ async function generateDOCX() {
     }));
   }
 
-  // Net total: only show when there are Credits (otherwise Net = CO total, redundant)
-  if ((coRows_dom.length || crRows_dom.length) && crRows_dom.length > 0) {
+  // Net total: only show when there is an actual non-zero Credit amount
+  let _crActualTotal = 0;
+  Array.from(crRows_dom).forEach(tr => {
+    const _raw = (tr.querySelectorAll('td')[2]?.querySelector('input')?.value || '0').replace(/,/g,'');
+    _crActualTotal += parseFloat(_raw) || 0;
+  });
+  if (_crActualTotal > 0) {
     s3Children.push(emptyPara());
     s3Children.push(new Table({
       width: { size: 9500, type: WidthType.DXA },
