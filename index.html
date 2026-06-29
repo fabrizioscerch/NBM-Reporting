@@ -33519,7 +33519,7 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
       <div class="g3">
         <div class="fl"><label>Next Milestone</label><input type="text" id="next-milestone" placeholder="e.g. Main engine installation"></div>
         <div class="fl"><label>Expected Date</label><input type="date" id="next-milestone-date"></div>
-        <div class="fl"><label>Milestone Amount (€)</label><input type="text" id="milestone-amt" placeholder="e.g. 1,200,000"></div>
+        <div class="fl"><label>Milestone Amount (€)</label><input type="text" id="milestone-amt" placeholder="e.g. 1,200,000" oninput="this.value=this.value.replace(/[^0-9,.]/g,'')"></div>
       </div>
     </div>
   </div>
@@ -33773,7 +33773,7 @@ function addCO(){
   tr.id='co-'+coCount;
   tr.innerHTML=`<td><input type="text" value="${coCount}" style="width:32px;text-align:center"></td>
     <td><input type="text" placeholder="Description"></td>
-    <td><input type="text" placeholder="0" oninput="calcTotals()"></td>
+    <td><input type="text" placeholder="0" oninput="this.value=this.value.replace(/[^0-9,.]/g,'');calcTotals()"></td>
     <td><select onchange="calcTotals()"><option value="approved">Approved</option><option value="outstanding">Outstanding</option><option value="rejected">Rejected</option></select></td>
     <td><button class="del-btn" onclick="this.closest('tr').remove();calcTotals()">&times;</button></td>`;
   document.getElementById('co-body').appendChild(tr);
@@ -33786,7 +33786,7 @@ function addCR(){
   tr.id='cr-'+crCount;
   tr.innerHTML=`<td><input type="text" value="${crCount}" style="width:32px;text-align:center"></td>
     <td><input type="text" placeholder="Description"></td>
-    <td><input type="text" placeholder="0" oninput="calcTotals()"></td>
+    <td><input type="text" placeholder="0" oninput="this.value=this.value.replace(/[^0-9,.]/g,'');calcTotals()"></td>
     <td><select onchange="calcTotals()"><option value="approved">Approved</option><option value="outstanding">Outstanding</option></select></td>
     <td><button class="del-btn" onclick="this.closest('tr').remove();calcTotals()">&times;</button></td>`;
   document.getElementById('cr-body').appendChild(tr);
@@ -34686,6 +34686,18 @@ async function generateDOCX() {
 
   // Format a numeric string with thousands separators. Accepts both "161500"
   // and "161,500" or "161.500" inputs; preserves decimal portion if present.
+  function fmtDate(val) {
+    if (!val) return '';
+    const _months = ['January','February','March','April','May','June',
+                     'July','August','September','October','November','December'];
+    const parts = val.split('-');
+    if (parts.length !== 3) return val; // not YYYY-MM-DD, return as-is
+    const [y, m, d] = parts;
+    const mi = parseInt(m, 10) - 1;
+    if (mi < 0 || mi > 11) return val;
+    return _months[mi] + ' ' + parseInt(d, 10) + ', ' + y;
+  }
+
   function fmtMoney(raw) {
     if (raw === '' || raw === null || raw === undefined) return '';
     const s = String(raw).trim().replace(/\s/g,'').replace(/,/g,'');
@@ -35604,8 +35616,8 @@ async function generateDOCX() {
   if (v('last-visit')||v('next-visit')) {
     s1Children.push(emptyPara());
     const _visitRows = [];
-    if (v('last-visit')) _visitRows.push(namedRow("Last site visit", v('last-visit')));
-    if (v('next-visit')) _visitRows.push(namedRow("Next site visit", v('next-visit')));
+    if (v('last-visit')) _visitRows.push(namedRow("Last site visit", fmtDate(v('last-visit'))));
+    if (v('next-visit')) _visitRows.push(namedRow("Next site visit", fmtDate(v('next-visit'))));
     if (_visitRows.length) s1Children.push(new Table({
       width: { size: 9500, type: WidthType.DXA },
       columnWidths: [3000, 6500],
@@ -35691,7 +35703,7 @@ async function generateDOCX() {
   const msRows = [];
   if (v('last-milestone'))     msRows.push(namedRow("Last milestone reached", v('last-milestone')));
   if (v('next-milestone'))     msRows.push(namedRow("Next milestone", v('next-milestone')));
-  if (v('next-milestone-date')) msRows.push(namedRow("Expected date", v('next-milestone-date')));
+  if (v('next-milestone-date')) msRows.push(namedRow("Expected date", fmtDate(v('next-milestone-date'))));
   if (v('milestone-amt'))      msRows.push(namedRow("Milestone amount", currency+fmtMoney(v('milestone-amt'))));
 
   if (msRows.length) {
@@ -36358,7 +36370,7 @@ async function generateDOCX() {
           children:[
             new TableCell({width:{size:400,type:WidthType.DXA},shading:{fill:bg,type:ShadingType.CLEAR},margins:{top:60,bottom:60,left:120,right:120},borders:thinBorders,children:[para(String(i+1),{size:24})]}),
             new TableCell({width:{size:5400,type:WidthType.DXA},shading:{fill:bg,type:ShadingType.CLEAR},margins:{top:60,bottom:60,left:120,right:120},borders:thinBorders,children:[para(desc,{size:24})]}),
-            new TableCell({width:{size:2000,type:WidthType.DXA},shading:{fill:bg,type:ShadingType.CLEAR},margins:{top:60,bottom:60,left:120,right:120},borders:thinBorders,children:[para(due,{size:24})]}),
+            new TableCell({width:{size:2000,type:WidthType.DXA},shading:{fill:bg,type:ShadingType.CLEAR},margins:{top:60,bottom:60,left:120,right:120},borders:thinBorders,children:[para(fmtDate(due),{size:24})]}),
             new TableCell({width:{size:1700,type:WidthType.DXA},shading:{fill:bg,type:ShadingType.CLEAR},margins:{top:60,bottom:60,left:120,right:120},borders:thinBorders,children:[para(pri,{size:24})]}),
           ],
         });
