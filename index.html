@@ -35524,14 +35524,25 @@ async function generateDOCX() {
   const _bdmOn = document.getElementById('bdm-cb').checked;
   const _coOn  = document.getElementById('co-cb').checked;
   const _logOn = document.getElementById('log-cb').checked;
-  tocEntries.push({ label: "1.  General Overview",                      anchor: "sec1" });
-  tocEntries.push({ label: "2.  Production Schedule & Milestones",      anchor: "sec2" });
-  if (_hasMedia) tocEntries.push({ label: "3.  Progress Media",         anchor: "sec3" });
-  if (_logOn)    tocEntries.push({ label: "4.  Construction Log",       anchor: "sec4" });
-  if (_paintOn)  tocEntries.push({ label: "5.  Paint Inspection",       anchor: "sec5" });
-  if (_intOn)    tocEntries.push({ label: "6.  Interiors Inspection",   anchor: "sec6" });
-  if (_coOn)    tocEntries.push({ label: "7.  Change Orders",             anchor: "sec7" });
-  if (_bdmOn)    tocEntries.push({ label: "8.  Buyer's Decision Making", anchor: "sec8" });
+  // Dynamic sequential numbering — only count included sections
+  let _sn = 0;
+  const _n1 = ++_sn;                      // General Overview (always)
+  const _n2 = ++_sn;                      // Production Schedule (always)
+  const _n3 = _hasMedia ? ++_sn : null;   // Progress Media
+  const _n4 = _logOn   ? ++_sn : null;   // Construction Log
+  const _n5 = _paintOn ? ++_sn : null;   // Paint Inspection
+  const _n6 = _intOn   ? ++_sn : null;   // Interiors Inspection
+  const _n7 = _coOn    ? ++_sn : null;   // Change Orders
+  const _n8 = _bdmOn   ? ++_sn : null;   // Buyer's Decision Making
+
+  tocEntries.push({ label: _n1+".  General Overview",                      anchor: "sec1" });
+  tocEntries.push({ label: _n2+".  Production Schedule & Milestones",   anchor: "sec2" });
+  if (_hasMedia) tocEntries.push({ label: _n3+".  Progress Media",      anchor: "sec3" });
+  if (_logOn)    tocEntries.push({ label: _n4+".  Construction Log",    anchor: "sec4" });
+  if (_paintOn)  tocEntries.push({ label: _n5+".  Paint Inspection",    anchor: "sec5" });
+  if (_intOn)    tocEntries.push({ label: _n6+".  Interiors Inspection",anchor: "sec6" });
+  if (_coOn)     tocEntries.push({ label: _n7+".  Change Orders",        anchor: "sec7" });
+  if (_bdmOn)    tocEntries.push({ label: _n8+".  Buyer's Decision Making",anchor: "sec8" });
 
   sections.push({
     ...buildSectionProps({ withFooter: true }),
@@ -35588,7 +35599,7 @@ async function generateDOCX() {
 
   const s1Children = [
     sectionAnchor("sec1"),
-    sectionHeading("1. General Overview"),
+    sectionHeading(_n1+". General Overview"),
     emptyPara(),
   ];
 
@@ -35638,7 +35649,7 @@ async function generateDOCX() {
   // ══════════════════════════════════════════════════════════════════════════
   //  SECTION 2 – SCHEDULE
   // ══════════════════════════════════════════════════════════════════════════
-  const s2Children = [ sectionAnchor("sec2"), sectionHeading("2. Production Schedule & Milestones"), emptyPara() ];
+  const s2Children = [ sectionAnchor("sec2"), sectionHeading(_n2+". Production Schedule & Milestones"), emptyPara() ];
 
   if (ganttFiles.length) {
     pb.textContent = 'Adding Gantt chart…';
@@ -35954,7 +35965,7 @@ async function generateDOCX() {
       const ROWS_PER_PAGE = 2;
       const s6Page1 = [
         sectionAnchor("sec3"),
-        sectionHeading("3. Progress Media"),
+        sectionHeading(_n3+". Progress Media"),
         new Paragraph({ spacing: { before: 0, after: 40, line: 20, lineRule: 'exact' }, children: [new TextRun({ size: 2 })] }),
       ];
       for (let r = 0; r < Math.min(ROWS_PER_PAGE, photoRowTables.length); r++) {
@@ -35977,7 +35988,7 @@ async function generateDOCX() {
     } else {
       // No photos — push just the heading
       sections.push({ ...buildSectionProps({ withFooter: true }),
-        children: [ sectionAnchor("sec3"), sectionHeading("3. Progress Media") ] });
+        children: [ sectionAnchor("sec3"), sectionHeading(_n3+". Progress Media") ] });
     }
 
     // ── Videos — separate page ───────────────────────────────────────────────
@@ -36018,7 +36029,7 @@ async function generateDOCX() {
         });
       }
 
-      const s7Children = [ sectionAnchor("sec3v"), sectionHeading("3b. Videos"), emptyPara() ];
+      const s7Children = [ sectionAnchor("sec3v"), sectionHeading((_n3||"3")+"b. Videos"), emptyPara() ];
 
       for (let r=0; r<Math.ceil(videoKeys.length/vCols); r++) {
         const rowCells = [];
@@ -36092,7 +36103,7 @@ async function generateDOCX() {
   //  SECTION 4 – CONSTRUCTION LOG
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('log-cb').checked) {
-    const s8Children = [ sectionAnchor("sec4"), sectionHeading("4. Construction Log"), emptyPara() ];
+    const s8Children = [ sectionAnchor("sec4"), sectionHeading(_n4+". Construction Log"), emptyPara() ];
     const logPreviewEl = document.getElementById('log-annex-preview');
     const logHtml = (logPreviewEl && logPreviewEl.style.display !== 'none') ? logPreviewEl.innerHTML.trim() : '';
     if (logHtml) {
@@ -36112,7 +36123,7 @@ async function generateDOCX() {
   //  SECTION 5 – PAINT INSPECTION  (if applicable)
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('paint-cb').checked) {
-    const s4Children = [ sectionAnchor("sec5"), sectionHeading("5. Paint Inspection"), emptyPara() ];
+    const s4Children = [ sectionAnchor("sec5"), sectionHeading(_n5+". Paint Inspection"), emptyPara() ];
     const paintRows = [];
     if (paintSurveyor)       paintRows.push(namedRow("Surveyor", paintSurveyor));
     if (v('paint-date'))     paintRows.push(namedRow("Inspection date", v('paint-date')));
@@ -36156,7 +36167,7 @@ async function generateDOCX() {
   //  SECTION 6 – INTERIORS INSPECTION  (if applicable)
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('int-cb').checked) {
-    const s5Children = [ sectionAnchor("sec6"), sectionHeading("6. Interiors Inspection"), emptyPara() ];
+    const s5Children = [ sectionAnchor("sec6"), sectionHeading(_n6+". Interiors Inspection"), emptyPara() ];
     const intRows = [];
     if (intSurveyor)        intRows.push(namedRow("Surveyor", intSurveyor));
     if (v('int-date'))      intRows.push(namedRow("Inspection date", v('int-date')));
@@ -36199,7 +36210,7 @@ async function generateDOCX() {
   // ══════════════════════════════════════════════════════════════════════════
   //  SECTION 7 – CHANGE ORDERS
   // ══════════════════════════════════════════════════════════════════════════
-  const s3Children = [ sectionAnchor("sec7"), sectionHeading("7. Change Orders"), emptyPara() ];
+  const s3Children = [ sectionAnchor("sec7"), sectionHeading(_n7+". Change Orders"), emptyPara() ];
   const coRows_dom = document.querySelectorAll('#co-body tr');
 
   if (coRows_dom.length) {
@@ -36351,7 +36362,7 @@ async function generateDOCX() {
   //  SECTION 8 – BUYER'S DECISION MAKING
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('bdm-cb').checked) {
-    const s7Children = [ sectionAnchor("sec8"), sectionHeading("8. Buyer's Decision Making"), emptyPara() ];
+    const s7Children = [ sectionAnchor("sec8"), sectionHeading(_n8+". Buyer's Decision Making"), emptyPara() ];
     const bdmRows_dom = document.querySelectorAll('#bdm-body tr');
 
     if (bdmRows_dom.length) {
