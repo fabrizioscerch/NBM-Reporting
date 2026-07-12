@@ -35090,17 +35090,30 @@ async function generateDOCX() {
     const { bold=false, italic=false, color="1a1a2e", size=20,
             align=AlignmentType.LEFT, spacing={before:40,after:40},
             font="Calibri" } = opts;
-    // Preserve line breaks from textarea input: split on \n and insert <w:br/> between lines
-    const lines = String(text ?? '').split('\n');
-    const children = [];
-    lines.forEach((line, i) => {
-      if (i > 0) children.push(new TextRun({ break: 1 }));
-      children.push(new TextRun({ text: line, bold, italic, color, size, font }));
-    });
+    // Single-line paragraph — multi-line text is handled by pushParaLines()
     return new Paragraph({
       alignment: align,
       spacing,
-      children,
+      children: [ new TextRun({ text: String(text ?? ''), bold, italic, color, size, font }) ],
+    });
+  }
+
+  // Push one paragraph per line of text; empty lines become emptyPara().
+  // Use this instead of push(para(multilineText)) for all textarea fields.
+  function pushParaLines(arr, text, opts={}) {
+    const lines = String(text ?? '').split('\n');
+    const { spacing } = opts;
+    const afterBase = spacing?.after ?? 40;
+    lines.forEach((line, i, a) => {
+      const isLast = i === a.length - 1;
+      if (!line.trim()) {
+        arr.push(emptyPara());
+      } else {
+        const lineSpacing = spacing
+          ? { ...spacing, after: isLast ? afterBase : Math.min(20, afterBase) }
+          : { before: 40, after: isLast ? 40 : 20 };
+        arr.push(para(line, { ...opts, spacing: lineSpacing }));
+      }
     });
   }
 
@@ -35633,7 +35646,11 @@ async function generateDOCX() {
     const _s1Blks = text.split(/\n\n+/).map(t => t.trim()).filter(Boolean);
     _s1Blks.forEach((t, bi) => {
       if (bi > 0) s1Children.push(emptyPara());
-      s1Children.push(buildLinkedPara(t, _paraOpts));
+      // Within each block, split on single \n → one paragraph per line
+      t.split('\n').forEach(line => {
+        if (!line.trim()) s1Children.push(emptyPara());
+        else s1Children.push(buildLinkedPara(line, _paraOpts));
+      });
     });
   });
 
@@ -35725,7 +35742,7 @@ async function generateDOCX() {
       s2Children.push(emptyPara());
       const _schedParas = (v('schedule-text')||'').split(/\n\n+/).map(t=>t.trim()).filter(Boolean);
       _schedParas.forEach((_sp, _si) => {
-        s2Children.push(para(_sp, { size:24, align:AlignmentType.BOTH, spacing:{before:0,after:0} }));
+        pushParaLines(s2Children, _sp, { size:24, align:AlignmentType.BOTH, spacing:{before:0,after:0} });
         if (_si === 0) { s2Children.push(emptyPara()); s2Children.push(emptyPara()); }
       });
   }
@@ -36123,7 +36140,7 @@ async function generateDOCX() {
     if (logHtml) {
       s8Children.push(...(await htmlToDocxChildren(logHtml)));
     } else {
-      s8Children.push(para(v('construction-log')||'[No content pasted]', { size:24, spacing:{before:120,after:80} }));
+      pushParaLines(s8Children, v('construction-log')||'[No content pasted]', { size:24, spacing:{before:120,after:80} });
     }
 
     sections.push({
@@ -36175,7 +36192,7 @@ async function generateDOCX() {
     } else if (paintAnnex) {
       s4Children.push(emptyPara());
       s4Children.push(para("Surveyor Report Annex — continued on following pages:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
-      s4Children.push(para(paintAnnex, { size:24, spacing:{before:0,after:80} }));
+      pushParaLines(s4Children, paintAnnex, { size:24, spacing:{before:0,after:80} });
     }
 
     sections.push({
@@ -36226,7 +36243,7 @@ async function generateDOCX() {
     } else if (intAnnex) {
       s5Children.push(emptyPara());
       s5Children.push(para("Surveyor Report Annex — continued on following pages:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
-      s5Children.push(para(intAnnex, { size:24, spacing:{before:0,after:80} }));
+      pushParaLines(s5Children, intAnnex, { size:24, spacing:{before:0,after:80} });
     }
 
     sections.push({
@@ -36378,7 +36395,7 @@ async function generateDOCX() {
 
   if (v('co-notes')) {
     s3Children.push(emptyPara());
-    s3Children.push(para(v('co-notes'), { italic:true, size:24, spacing:{before:80,after:80} }));
+    pushParaLines(s3Children, v('co-notes'), { italic:true, size:24, spacing:{before:80,after:80} });
   }
 
   if (_coOn) sections.push({
@@ -36434,7 +36451,7 @@ async function generateDOCX() {
 
     if (v('bdm-notes')) {
       s7Children.push(emptyPara());
-      s7Children.push(para(v('bdm-notes'),{italic:true,size:24,spacing:{before:80,after:80}}));
+      pushParaLines(s7Children, v('bdm-notes'), {italic:true,size:24,spacing:{before:80,after:80}});
     }
 
     sections.push({
