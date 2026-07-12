@@ -34660,6 +34660,7 @@ async function generateDOCX() {
   function sectionAnchor(id) {
     return new Paragraph({
       spacing: { before: 0, after: 0 },
+      keepNext: true,
       children: [
         new Bookmark({ id, children: [ new TextRun({ text: "", size: 2 }) ] }),
       ],
@@ -34830,6 +34831,7 @@ async function generateDOCX() {
         });
       }
       const { w, h } = await measureImage(src);
+      const _maxH = opts.maxHeightPx || MAX_IMG_H_PX;
       let dw = w, dh = h;
       // Cap by width first
       if (dw > MAX_IMG_W_PX) {
@@ -34837,9 +34839,9 @@ async function generateDOCX() {
         dw = MAX_IMG_W_PX;
       }
       // Then cap by height (preserve aspect ratio)
-      if (dh > MAX_IMG_H_PX) {
-        dw = Math.round(dw * MAX_IMG_H_PX / dh);
-        dh = MAX_IMG_H_PX;
+      if (dh > _maxH) {
+        dw = Math.round(dw * _maxH / dh);
+        dh = _maxH;
       }
       // Vertical centering: page content area ≈ 900px tall (after footer).
       // Compute spacing.before so the empty space above and below the image is balanced.
@@ -35000,7 +35002,10 @@ async function generateDOCX() {
               if (c.tagName.toLowerCase()==='img'){
                 const p = await imgToParagraph(c, {
                   pageBreakBefore: pageNum > 1,
-                  centerVertically: true,
+                  centerVertically: pageNum > 1,
+                  // First PDF page shares the page with the section heading;
+                  // cap its height so it fits after the heading (~98px overhead).
+                  maxHeightPx: pageNum === 1 ? 780 : undefined,
                 });
                 localOut.push(p);
               }
@@ -35153,6 +35158,7 @@ async function generateDOCX() {
               children: [
                 new Paragraph({
                   spacing: { before: 0, after: 0 },
+                  keepNext: true,
                   children: [
                     new TextRun({ text, bold: true, size: 32, color: WHITE, font: "Calibri", characterSpacing: 20 }),
                   ],
@@ -35665,8 +35671,14 @@ async function generateDOCX() {
       }).catch(() => null);
       if (ganttImgEl) {
         // Display dims: full page width = 170mm
-        const ganttW = Math.round(170 / 25.4 * 96); // ~643px
-        const ganttH = Math.round(ganttW * ganttImgEl.naturalHeight / ganttImgEl.naturalWidth);
+        let ganttW = Math.round(170 / 25.4 * 96); // ~643px
+        let ganttH = Math.round(ganttW * ganttImgEl.naturalHeight / ganttImgEl.naturalWidth);
+        // First Gantt image shares the page with the section heading — cap height
+        // so portrait-format uploads don't push the heading to a blank page.
+        if (_gi === 0 && ganttH > 780) {
+          ganttH = 780;
+          ganttW = Math.round(ganttH * ganttImgEl.naturalWidth / ganttImgEl.naturalHeight);
+        }
         const _gScale = 4; // 4× for print quality
         const _gcw = ganttW * _gScale;
         const _gch = ganttH * _gScale;
