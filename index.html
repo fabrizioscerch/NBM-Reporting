@@ -35099,8 +35099,8 @@ async function generateDOCX() {
     });
   }
 
-  function emptyPara() {
-    return new Paragraph({ spacing: { before: 40, after: 40 } });
+  function emptyPara(keepNext) {
+    return new Paragraph({ spacing: { before: 40, after: 40 }, keepNext: !!keepNext });
   }
 
   function namedRow(label, value) {
@@ -35600,7 +35600,7 @@ async function generateDOCX() {
   const s1Children = [
     sectionAnchor("sec1"),
     sectionHeading(_n1+". General Overview"),
-    emptyPara(),
+    emptyPara(true),
   ];
 
   // Subsections — each rendered only if its checkbox is ticked
@@ -35624,7 +35624,9 @@ async function generateDOCX() {
     // Subheading
     s1Children.push(para(sub.label, { bold:true, color:NAVY, size:24, spacing:{before:180,after:60} }));
     // Body paragraphs with auto-links
-    text.split(/\n\n+/).map(t => t.trim()).filter(Boolean).forEach(t => {
+    const _s1Blks = text.split(/\n\n+/).map(t => t.trim()).filter(Boolean);
+    _s1Blks.forEach((t, bi) => {
+      if (bi > 0) s1Children.push(emptyPara());
       s1Children.push(buildLinkedPara(t, _paraOpts));
     });
   });
@@ -35649,7 +35651,7 @@ async function generateDOCX() {
   // ══════════════════════════════════════════════════════════════════════════
   //  SECTION 2 – SCHEDULE
   // ══════════════════════════════════════════════════════════════════════════
-  const s2Children = [ sectionAnchor("sec2"), sectionHeading(_n2+". Production Schedule & Milestones"), emptyPara() ];
+  const s2Children = [ sectionAnchor("sec2"), sectionHeading(_n2+". Production Schedule & Milestones"), emptyPara(true) ];
 
   if (ganttFiles.length) {
     pb.textContent = 'Adding Gantt chart…';
@@ -36103,7 +36105,7 @@ async function generateDOCX() {
   //  SECTION 4 – CONSTRUCTION LOG
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('log-cb').checked) {
-    const s8Children = [ sectionAnchor("sec4"), sectionHeading(_n4+". Construction Log"), emptyPara() ];
+    const s8Children = [ sectionAnchor("sec4"), sectionHeading(_n4+". Construction Log"), emptyPara(true) ];
     const logPreviewEl = document.getElementById('log-annex-preview');
     const logHtml = (logPreviewEl && logPreviewEl.style.display !== 'none') ? logPreviewEl.innerHTML.trim() : '';
     if (logHtml) {
@@ -36123,7 +36125,7 @@ async function generateDOCX() {
   //  SECTION 5 – PAINT INSPECTION  (if applicable)
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('paint-cb').checked) {
-    const s4Children = [ sectionAnchor("sec5"), sectionHeading(_n5+". Paint Inspection"), emptyPara() ];
+    const s4Children = [ sectionAnchor("sec5"), sectionHeading(_n5+". Paint Inspection"), emptyPara(true) ];
     const paintRows = [];
     if (paintSurveyor)       paintRows.push(namedRow("Surveyor", paintSurveyor));
     if (v('paint-date'))     paintRows.push(namedRow("Inspection date", v('paint-date')));
@@ -36141,7 +36143,14 @@ async function generateDOCX() {
     if (v('paint-findings')) {
       s4Children.push(emptyPara());
       s4Children.push(para("Findings & open items:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
-      s4Children.push(para(v('paint-findings'), { size:24, align:AlignmentType.BOTH, spacing:{before:0,after:80} }));
+      v('paint-findings').split('\n').forEach((line, li, arr) => {
+        const _isLast = li === arr.length - 1;
+        if (!line.trim()) {
+          s4Children.push(emptyPara());
+        } else {
+          s4Children.push(para(line, { size:24, align:AlignmentType.BOTH, spacing:{before:0, after: _isLast ? 80 : 20} }));
+        }
+      });
     }
 
     const paintPreviewEl = document.getElementById('paint-annex-preview');
@@ -36167,7 +36176,7 @@ async function generateDOCX() {
   //  SECTION 6 – INTERIORS INSPECTION  (if applicable)
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('int-cb').checked) {
-    const s5Children = [ sectionAnchor("sec6"), sectionHeading(_n6+". Interiors Inspection"), emptyPara() ];
+    const s5Children = [ sectionAnchor("sec6"), sectionHeading(_n6+". Interiors Inspection"), emptyPara(true) ];
     const intRows = [];
     if (intSurveyor)        intRows.push(namedRow("Surveyor", intSurveyor));
     if (v('int-date'))      intRows.push(namedRow("Inspection date", v('int-date')));
@@ -36185,7 +36194,14 @@ async function generateDOCX() {
     if (v('int-findings')) {
       s5Children.push(emptyPara());
       s5Children.push(para("Findings & open items:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
-      s5Children.push(para(v('int-findings'), { size:24, align:AlignmentType.BOTH, spacing:{before:0,after:80} }));
+      v('int-findings').split('\n').forEach((line, li, arr) => {
+        const _isLast = li === arr.length - 1;
+        if (!line.trim()) {
+          s5Children.push(emptyPara());
+        } else {
+          s5Children.push(para(line, { size:24, align:AlignmentType.BOTH, spacing:{before:0, after: _isLast ? 80 : 20} }));
+        }
+      });
     }
 
     const intPreviewEl = document.getElementById('int-annex-preview');
@@ -36210,7 +36226,7 @@ async function generateDOCX() {
   // ══════════════════════════════════════════════════════════════════════════
   //  SECTION 7 – CHANGE ORDERS
   // ══════════════════════════════════════════════════════════════════════════
-  const s3Children = [ sectionAnchor("sec7"), sectionHeading(_n7+". Change Orders"), emptyPara() ];
+  const s3Children = [ sectionAnchor("sec7"), sectionHeading(_n7+". Change Orders"), emptyPara(true) ];
   const coRows_dom = document.querySelectorAll('#co-body tr');
 
   if (coRows_dom.length) {
@@ -36362,7 +36378,7 @@ async function generateDOCX() {
   //  SECTION 8 – BUYER'S DECISION MAKING
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('bdm-cb').checked) {
-    const s7Children = [ sectionAnchor("sec8"), sectionHeading(_n8+". Buyer's Decision Making"), emptyPara() ];
+    const s7Children = [ sectionAnchor("sec8"), sectionHeading(_n8+". Buyer's Decision Making"), emptyPara(true) ];
     const bdmRows_dom = document.querySelectorAll('#bdm-body tr');
 
     if (bdmRows_dom.length) {
