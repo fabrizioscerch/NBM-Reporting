@@ -33361,8 +33361,13 @@ function doLogin(){
         </select>
       </div>
       <div>
-        <label>Report Month</label>
-        <input type="month" id="sel-month" value="2026-06">
+        <label>Report Date</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="month" id="sel-month" value="2026-06" style="flex:1;">
+          <input type="number" id="sel-day" min="1" max="31" placeholder="Day (opt.)"
+                 title="Optional — leave blank for month-only report"
+                 style="width:100px;padding:6px 8px;border:1px solid #d0d2d6;border-radius:6px;font-size:13px;font-family:inherit;">
+        </div>
       </div>
       <div>
         <label>Currency</label>
@@ -34248,11 +34253,14 @@ async function previewGantt(e) {
 
 function v(id){return (document.getElementById(id)||{}).value||'';}
 
-function monthLabel(val){
+function monthLabel(val, day){
   if(!val) return '';
   const [y,m]=val.split('-');
   const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  return months[parseInt(m)-1]+' '+y;
+  const label = months[parseInt(m)-1]+' '+y;
+  const d = parseInt(day);
+  if (d >= 1 && d <= 31) return months[parseInt(m)-1]+' '+d+', '+y;
+  return label;
 }
 
 async function imgToDataUrl(file){
@@ -34713,11 +34721,13 @@ async function generateDOCX() {
     return decPart !== undefined ? grouped + '.' + decPart : grouped;
   }
 
-  function monthLabel(val) {
+  function monthLabel(val, day) {
     if (!val) return '';
     const [y,m] = val.split('-');
     const months = ['January','February','March','April','May','June',
                     'July','August','September','October','November','December'];
+    const d = parseInt(day);
+    if (d >= 1 && d <= 31) return months[parseInt(m)-1]+' '+d+', '+y;
     return months[parseInt(m)-1]+' '+y;
   }
 
@@ -35323,7 +35333,7 @@ async function generateDOCX() {
   const techName      = v('tech-name');
   const paintSurveyor = v('paint-surveyor');
   const intSurveyor   = v('int-surveyor');
-  const reportMonth   = monthLabel(v('sel-month'));
+  const reportMonth   = monthLabel(v('sel-month'), document.getElementById('sel-day')?.value);
   const currency      = document.getElementById('sel-currency')?.value || '€';
 
   // ── yacht profile photos ──────────────────────────────────────────────────
@@ -36573,7 +36583,9 @@ async function generateDOCX() {
   pb.textContent = 'Generating .docx file…';
   const blob = await docx.Packer.toBlob(doc);
 
-  const month  = v('sel-month') || 'report';
+  const _gMonth = v('sel-month') || '';
+  const _gDay   = parseInt((document.getElementById('sel-day')||{}).value || '');
+  const month   = _gMonth.replace(/-/g,'') + (_gDay>=1&&_gDay<=31 ? String(_gDay).padStart(2,'0') : '') || 'report';
   const vessel = v('vessel-name') || v('vessel-builder') || 'vessel';
   const filename = 'NauticALL NBM Report ' + vessel.trim() + ' ' + month + '.docx';
 
