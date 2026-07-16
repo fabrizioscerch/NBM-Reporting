@@ -33364,9 +33364,12 @@ function doLogin(){
         <label>Report Date</label>
         <div style="display:flex;gap:8px;align-items:center;">
           <input type="month" id="sel-month" value="2026-06" style="flex:1;">
-          <input type="number" id="sel-day" min="1" max="31" placeholder="Day (opt.)"
-                 title="Optional — leave blank for month-only report"
-                 style="width:100px;padding:6px 8px;border:1px solid #d0d2d6;border-radius:6px;font-size:13px;font-family:inherit;">
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <span style="font-size:10px;color:#8a8fa8;font-family:inherit;white-space:nowrap;">If not EOM</span>
+            <input type="number" id="sel-day" min="1" max="31" placeholder="Day"
+                   title="Optional — leave blank for end-of-month / month-only report"
+                   style="width:90px;padding:6px 8px;border:1px solid #d0d2d6;border-radius:6px;font-size:13px;font-family:inherit;">
+          </div>
         </div>
       </div>
       <div>
