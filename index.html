@@ -34205,45 +34205,20 @@ function removeAnnex(prefix){
   if(removeBtn) removeBtn.style.display = 'none';
 }
 
-// ── Multi-file annex upload with drag-to-reorder ────────────────────────────
+// ── Multi-file annex upload with Up/Down reordering ─────────────────────────
 const _annexCounters = {};
-let _dragCard = null;
 
-function _initAnnexDrag(container) {
-  if (container._dragInit) return;
-  container._dragInit = true;
-  container.addEventListener('dragstart', e => {
-    const card = e.target.closest('[data-annex-card]');
-    if (!card) return;
-    _dragCard = card;
-    setTimeout(() => card.style.opacity = '0.4', 0);
-    e.dataTransfer.effectAllowed = 'move';
-  });
-  container.addEventListener('dragend', () => {
-    if (_dragCard) { _dragCard.style.opacity = ''; _dragCard = null; }
-    container.querySelectorAll('[data-annex-card]').forEach(c => c.style.outline = '');
-  });
-  container.addEventListener('dragover', e => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    const card = e.target.closest('[data-annex-card]');
-    container.querySelectorAll('[data-annex-card]').forEach(c => c.style.outline = '');
-    if (card && card !== _dragCard) card.style.outline = '2px solid #1c3548';
-  });
-  container.addEventListener('dragleave', e => {
-    if (!container.contains(e.relatedTarget))
-      container.querySelectorAll('[data-annex-card]').forEach(c => c.style.outline = '');
-  });
-  container.addEventListener('drop', e => {
-    e.preventDefault();
-    const target = e.target.closest('[data-annex-card]');
-    container.querySelectorAll('[data-annex-card]').forEach(c => c.style.outline = '');
-    if (!target || !_dragCard || target === _dragCard) return;
-    const cards = Array.from(container.querySelectorAll('[data-annex-card]'));
-    const si = cards.indexOf(_dragCard), ti = cards.indexOf(target);
-    container.insertBefore(_dragCard, si < ti ? target.nextSibling : target);
-    _dragCard.style.opacity = '';
-  });
+function _moveAnnexCard(cardId, dir) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  const container = card.parentElement;
+  if (dir < 0) {
+    const prev = card.previousElementSibling;
+    if (prev) container.insertBefore(card, prev);
+  } else {
+    const next = card.nextElementSibling;
+    if (next) container.insertBefore(next, card);
+  }
 }
 
 async function addAnnexFile(prefix, e) {
@@ -34258,18 +34233,17 @@ async function _addSingleAnnexFile(prefix, file) {
   const cardId = prefix + '-file-' + idx;
   const container = document.getElementById(prefix + '-files-container');
   if (!container) return;
-  _initAnnexDrag(container);
   const card = document.createElement('div');
   card.id = cardId;
   card.setAttribute('data-annex-card', '1');
-  card.setAttribute('draggable', 'true');
-  card.style.cssText = 'margin-top:8px;border:1px solid #d0d2d6;border-radius:8px;overflow:hidden;background:#fff;cursor:default;';
+  card.style.cssText = 'margin-top:8px;border:1px solid #d0d2d6;border-radius:8px;overflow:hidden;background:#fff;';
   const nameId = cardId + '-name';
   const previewId = cardId + '-preview';
+  const btnStyle = 'background:#d8dde6;border:none;cursor:pointer;font-size:11px;color:#1c3548;padding:2px 7px;border-radius:3px;font-weight:700;line-height:1.4;';
   card.innerHTML =
-    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#eef2f6;border-bottom:1px solid #d0d2d6;cursor:grab;" ' +
-        'title="Drag to reorder">' +
-      '<span style="font-size:16px;color:#aaa;line-height:1;user-select:none;">⠿</span>' +
+    '<div style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:#eef2f6;border-bottom:1px solid #d0d2d6;">' +
+      '<button type="button" onclick="_moveAnnexCard(\'' + cardId + '\',-1)" style="' + btnStyle + '" title="Move up">▲</button>' +
+      '<button type="button" onclick="_moveAnnexCard(\'' + cardId + '\',1)"  style="' + btnStyle + '" title="Move down">▼</button>' +
       '<span id="' + nameId + '" style="flex:1;font-size:12px;color:#1c3548;font-weight:600;">' + file.name + ' — loading…</span>' +
       '<button type="button" onclick="removeAnnexFile(\'' + cardId + '\')" ' +
           'style="background:none;border:none;cursor:pointer;font-size:12px;color:#888;padding:2px 8px;border-radius:4px;">✕ Remove</button>' +
