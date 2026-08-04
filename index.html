@@ -33557,15 +33557,13 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
       <div class="applicable-row"><input type="checkbox" id="log-cb" onchange="toggleAppl('log-fields',this)"><label for="log-cb">This section applies this month</label></div>
       <div class="fields-wrap disabled" id="log-fields">
         <div class="fl">
-          <label>Construction Log Report <span class="opt">(upload .pdf — imported as page images, formatting preserved, not editable)</span></label>
-          <div class="gantt-zone" id="log-annex-zone" style="padding:16px;">
-            <input type="file" id="log-annex-file" accept=".docx,.pdf" onchange="loadAnnex(event,'log')">
+          <label>Construction Log Report <span class="opt">(upload .pdf — multiple files allowed)</span></label>
+          <div class="gantt-zone" id="log-annex-zone" style="padding:16px;cursor:pointer;" onclick="document.getElementById('log-annex-file').click()">
+            <input type="file" id="log-annex-file" accept=".docx,.pdf" style="display:none;" onchange="addAnnexFile('log',event)">
             <svg width="22" height="22" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <p id="log-annex-name">Upload Construction Log (.pdf)</p>
+            <p>(Click to upload — multiple files allowed)</p>
           </div>
-          <button type="button" id="log-annex-remove" onclick="removeAnnex('log')" style="display:none;margin-top:8px;background:#f5f5f5;border:1px solid #d0d2d6;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;color:#666;font-family:inherit;">✕ Remove file</button>
-          <div id="log-annex-preview" contenteditable="true" style="margin-top:8px;display:none;padding:12px;border:1px solid #e0e2e6;border-radius:8px;min-height:160px;max-height:500px;overflow-y:auto;background:#fff;font-size:13px;line-height:1.5;"></div>
-          <textarea id="construction-log" rows="10" placeholder="Extracted text appears here — review and edit before generating document..." style="margin-top:8px;"></textarea>
+          <div id="log-files-container"></div>
         </div>
       </div>
     </div>
@@ -33638,6 +33636,41 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
           <button type="button" id="int-annex-remove" onclick="removeAnnex('int')" style="display:none;margin-top:8px;background:#f5f5f5;border:1px solid #d0d2d6;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;color:#666;font-family:inherit;">✕ Remove file</button>
           <div id="int-annex-preview" contenteditable="true" style="margin-top:8px;display:none;padding:12px;border:1px solid #e0e2e6;border-radius:8px;min-height:120px;max-height:400px;overflow-y:auto;background:#fff;font-size:13px;line-height:1.5;"></div>
           <textarea id="int-annex-text" rows="6" placeholder="Extracted text will appear here for review before it goes into the document..." style="margin-top:8px;display:none;"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- S7 NOISE & VIBRATION SURVEY -->
+  <div class="card">
+    <div class="card-header" onclick="toggleCard('s-nvib')">
+      <div class="card-title"><div class="sec-num">7</div><span class="sec-label">Noise &amp; Vibration Survey <span class="badge">If applicable</span></span></div>
+      <span class="chevron" id="ch-s-nvib">&#8964;</span>
+    </div>
+    <div class="card-body" id="b-s-nvib">
+      <div class="applicable-row"><input type="checkbox" id="nvib-cb" onchange="toggleAppl('nvib-fields',this)"><label for="nvib-cb">This section applies this month</label></div>
+      <div class="fields-wrap disabled" id="nvib-fields">
+        <div class="g2">
+          <div class="fl"><label>Inspection Date(s) <span class="opt">(e.g. 2026-06-03, 2026-06-04)</span></label><input type="text" id="nvib-date" placeholder="e.g. June 3, June 4 2026"></div>
+          <div class="fl"><label>Overall Status</label>
+            <select id="nvib-status">
+              <option>Acceptable — no open items</option>
+              <option>Punch list open</option>
+              <option>Items rejected — rework required</option>
+            </select>
+          </div>
+        </div>
+        <div class="fl"><label>Surveyor</label><input type="text" id="nvib-surveyor" placeholder="e.g. John Smith — Acoustic Marine Consulting"></div>
+        <div class="fl"><label>Areas Inspected / Test Conditions</label><input type="text" id="nvib-areas" placeholder="e.g. Engine room, Saloon, Master cabin — at anchor and under way"></div>
+        <div class="fl"><label>Findings &amp; Open Items</label><textarea id="nvib-findings" rows="5" placeholder="[STANDARD TEXT — TO BE CUSTOMIZED] Summarize the N&amp;V surveyor's key findings and any open items for this month..."></textarea></div>
+        <div class="fl" style="margin-top:8px">
+          <label>Surveyor Report Annex <span class="opt">(upload .pdf — multiple files allowed)</span></label>
+          <div class="gantt-zone" id="nvib-annex-zone" style="padding:16px;cursor:pointer;" onclick="document.getElementById('nvib-annex-file').click()">
+            <input type="file" id="nvib-annex-file" accept=".docx,.pdf" style="display:none;" onchange="addAnnexFile('nvib',event)">
+            <svg width="22" height="22" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p>(Click to upload — multiple files allowed)</p>
+          </div>
+          <div id="nvib-files-container"></div>
         </div>
       </div>
     </div>
@@ -34169,6 +34202,74 @@ function removeAnnex(prefix){
   if(zoneEl) zoneEl.style.borderColor = '';
   if(removeBtn) removeBtn.style.display = 'none';
 }
+
+// ── Multi-file annex upload (Construction Log, N&V Survey) ──────────────────
+const _annexCounters = {};
+
+async function addAnnexFile(prefix, e) {
+  const file = e.target.files[0]; if (!file) return;
+  e.target.value = ''; // allow re-uploading same file
+  if (!_annexCounters[prefix]) _annexCounters[prefix] = 0;
+  const idx = ++_annexCounters[prefix];
+  const cardId = prefix + '-file-' + idx;
+  const container = document.getElementById(prefix + '-files-container');
+  if (!container) return;
+  const card = document.createElement('div');
+  card.id = cardId;
+  card.style.cssText = 'margin-top:8px;border:1px solid #d0d2d6;border-radius:8px;overflow:hidden;background:#fff;';
+  const nameId = cardId + '-name';
+  const previewId = cardId + '-preview';
+  card.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#eef2f6;border-bottom:1px solid #d0d2d6;">' +
+      '<span id="' + nameId + '" style="font-size:12px;color:#1c3548;font-weight:600;">' + file.name + ' — loading…</span>' +
+      '<button type="button" onclick="removeAnnexFile(\'' + cardId + '\')" style="background:none;border:none;cursor:pointer;font-size:12px;color:#888;padding:2px 8px;border-radius:4px;">✕ Remove</button>' +
+    '</div>' +
+    '<div id="' + previewId + '" class="annex-file-preview" contenteditable="true" style="padding:12px;min-height:60px;max-height:500px;overflow-y:auto;font-size:13px;line-height:1.5;"></div>';
+  container.appendChild(card);
+  const nameEl = document.getElementById(nameId);
+  const previewEl = document.getElementById(previewId);
+  try {
+    if (file.name.endsWith('.docx')) {
+      const buf = await file.arrayBuffer();
+      const opts = { convertImage: mammoth.images.imgElement(img => img.read('base64').then(b => ({ src: 'data:' + img.contentType + ';base64,' + b }))) };
+      const res = await mammoth.convertToHtml({ arrayBuffer: buf }, opts);
+      previewEl.innerHTML = res.value;
+      nameEl.textContent = '✓ ' + file.name;
+    } else if (file.name.endsWith('.pdf')) {
+      const pdfjsLib = window['pdfjs-dist/build/pdf'];
+      if (!pdfjsLib) { previewEl.innerHTML = '<p style="color:#c00;">[PDF.js not loaded]</p>'; return; }
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const pdfDoc = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+      nameEl.textContent = file.name + ' — rendering ' + pdfDoc.numPages + ' page(s)…';
+      const parts = [];
+      for (let pi = 1; pi <= pdfDoc.numPages; pi++) {
+        const page = await pdfDoc.getPage(pi);
+        const vp = page.getViewport({ scale: 1.5 });
+        const cvs = document.createElement('canvas');
+        cvs.width = vp.width; cvs.height = vp.height;
+        const ctx = cvs.getContext('2d');
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, vp.width, vp.height);
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        const sd = ctx.getImageData(0, 0, vp.width, vp.height).data;
+        let nw = 0;
+        for (let si = 0; si < sd.length; si += 16) { if (sd[si] < 245 || sd[si+1] < 245 || sd[si+2] < 245) nw++; }
+        if (nw / (sd.length / 16) < 0.005) continue;
+        parts.push('<p data-pdf-page="' + pi + '"><img src="' + cvs.toDataURL('image/jpeg', 0.85) + '" alt="p' + pi + '" style="max-width:100%;display:block;margin:0 auto 8px;" /></p>');
+      }
+      previewEl.innerHTML = parts.join('\n');
+      nameEl.textContent = '✓ ' + file.name + '  (' + pdfDoc.numPages + ' page(s))';
+    }
+  } catch(err) {
+    previewEl.innerHTML = '<p style="color:#c00;">[Error: ' + err.message + ']</p>';
+    nameEl.textContent = '✗ ' + file.name;
+  }
+}
+
+function removeAnnexFile(cardId) {
+  const card = document.getElementById(cardId);
+  if (card) card.remove();
+}
+
 
 let ganttFiles = [];
 
@@ -35334,6 +35435,7 @@ async function generateDOCX() {
   const techName      = v('tech-name');
   const paintSurveyor = v('paint-surveyor');
   const intSurveyor   = v('int-surveyor');
+  const nvibSurveyor  = v('nvib-surveyor');
   const reportMonth   = monthLabel(v('sel-month'), document.getElementById('sel-day')?.value);
   const currency      = document.getElementById('sel-currency')?.value || '€';
 
@@ -35549,6 +35651,7 @@ async function generateDOCX() {
   const tocEntries = [];
   const _paintOn = document.getElementById('paint-cb').checked;
   const _intOn   = document.getElementById('int-cb').checked;
+  const _nvibOn  = document.getElementById('nvib-cb').checked;
   const _hasMedia = Object.keys(mediaFiles).filter(k => mediaFiles[k]).length > 0
                  || Object.keys(videoFiles).filter(k => videoFiles[k]).length > 0;
   const _bdmOn = document.getElementById('bdm-cb').checked;
@@ -35562,17 +35665,19 @@ async function generateDOCX() {
   const _n4 = _logOn   ? ++_sn : null;   // Construction Log
   const _n5 = _paintOn ? ++_sn : null;   // Paint Inspection
   const _n6 = _intOn   ? ++_sn : null;   // Interiors Inspection
-  const _n7 = _coOn    ? ++_sn : null;   // Change Orders
-  const _n8 = _bdmOn   ? ++_sn : null;   // Buyer's Decision Making
+  const _n7 = _nvibOn  ? ++_sn : null;   // Noise & Vibration Survey
+  const _n8 = _coOn    ? ++_sn : null;   // Change Orders
+  const _n9 = _bdmOn   ? ++_sn : null;   // Buyer's Decision Making
 
   tocEntries.push({ label: _n1+".  General Overview",                      anchor: "sec1" });
   tocEntries.push({ label: _n2+".  Production Schedule & Milestones",   anchor: "sec2" });
   if (_hasMedia) tocEntries.push({ label: _n3+".  Progress Media",      anchor: "sec3" });
   if (_logOn)    tocEntries.push({ label: _n4+".  Construction Log",    anchor: "sec4" });
   if (_paintOn)  tocEntries.push({ label: _n5+".  Paint Inspection",    anchor: "sec5" });
-  if (_intOn)    tocEntries.push({ label: _n6+".  Interiors Inspection",anchor: "sec6" });
-  if (_coOn)     tocEntries.push({ label: _n7+".  Change Orders",        anchor: "sec7" });
-  if (_bdmOn)    tocEntries.push({ label: _n8+".  Buyer's Decision Making",anchor: "sec8" });
+  if (_intOn)    tocEntries.push({ label: _n6+".  Interiors Inspection",       anchor: "sec6" });
+  if (_nvibOn)   tocEntries.push({ label: _n7+".  Noise & Vibration Survey",  anchor: "sec7" });
+  if (_coOn)     tocEntries.push({ label: _n8+".  Change Orders",              anchor: "sec8" });
+  if (_bdmOn)    tocEntries.push({ label: _n9+".  Buyer's Decision Making",    anchor: "sec9" });
 
   sections.push({
     ...buildSectionProps({ withFooter: true }),
@@ -35602,11 +35707,12 @@ async function generateDOCX() {
     const linkMap = [
       { phrase: "Production Schedule & Milestones",  anchor: "sec2" },
       { phrase: "Production Schedule",               anchor: "sec2" },
-      { phrase: "Change Orders",                     anchor: "sec7" },
+      { phrase: "Noise & Vibration Survey",          anchor: "sec7" },
+      { phrase: "Change Orders",                     anchor: "sec8" },
       { phrase: "Paint Inspection",                  anchor: "sec5" },
       { phrase: "Interiors Inspection",              anchor: "sec6" },
       { phrase: "Progress Media",                    anchor: "sec3" },
-      { phrase: "Buyer's Decision Making",           anchor: "sec8" },
+      { phrase: "Buyer's Decision Making",           anchor: "sec9" },
       { phrase: "Construction Log",                  anchor: "sec4" },
     ];
     // Build regex — longest phrases first so "Production Schedule & Milestones"
@@ -36146,14 +36252,15 @@ async function generateDOCX() {
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('log-cb').checked) {
     const s8Children = [ sectionAnchor("sec4"), sectionHeading(_n4+". Construction Log"), emptyPara(true) ];
-    const logPreviewEl = document.getElementById('log-annex-preview');
-    const logHtml = (logPreviewEl && logPreviewEl.style.display !== 'none') ? logPreviewEl.innerHTML.trim() : '';
-    if (logHtml) {
-      s8Children.push(...(await htmlToDocxChildren(logHtml)));
+    // Multi-file: collect all uploaded file previews
+    const _logPreviews = document.querySelectorAll('#log-files-container .annex-file-preview');
+    let _logHtml = '';
+    _logPreviews.forEach(el => { _logHtml += el.innerHTML; });
+    if (_logHtml.trim()) {
+      s8Children.push(...(await htmlToDocxChildren(_logHtml)));
     } else {
-      pushParaLines(s8Children, v('construction-log')||'[No content pasted]', { size:24, spacing:{before:120,after:80} });
+      pushParaLines(s8Children, v('construction-log')||'[No content — upload a PDF or paste text]', { size:24, spacing:{before:120,after:80} });
     }
-
     sections.push({
       ...buildSectionProps({ withFooter: true }),
       children: s8Children,
@@ -36263,10 +36370,59 @@ async function generateDOCX() {
     });
   }
 
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  SECTION 7 – NOISE & VIBRATION SURVEY  (if applicable)
+  // ══════════════════════════════════════════════════════════════════════════
+  if (_nvibOn) {
+    const sNvibChildren = [ sectionAnchor("sec7"), sectionHeading(_n7+". Noise & Vibration Survey"), emptyPara(true) ];
+    const nvibRows = [];
+    if (nvibSurveyor)        nvibRows.push(namedRow("Surveyor", nvibSurveyor));
+    if (v('nvib-date'))      nvibRows.push(namedRow("Inspection date", v('nvib-date')));
+    if (v('nvib-status'))    nvibRows.push(namedRow("Status", v('nvib-status')));
+    if (v('nvib-areas'))     nvibRows.push(namedRow("Areas / test conditions", v('nvib-areas')));
+
+    if (nvibRows.length) {
+      sNvibChildren.push(new Table({
+        width: { size:9500, type:WidthType.DXA },
+        columnWidths:[3000,6500],
+        rows: nvibRows,
+      }));
+    }
+
+    if (v('nvib-findings')) {
+      sNvibChildren.push(emptyPara());
+      sNvibChildren.push(para("Findings & open items:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
+      v('nvib-findings').split('\n').forEach((line, li, arr) => {
+        const _isLast = li === arr.length - 1;
+        if (!line.trim()) {
+          sNvibChildren.push(emptyPara());
+        } else {
+          sNvibChildren.push(para(line, { size:24, align:AlignmentType.BOTH, spacing:{before:0, after: _isLast ? 80 : 20} }));
+        }
+      });
+    }
+
+    // Multi-file annex
+    const _nvibPreviews = document.querySelectorAll('#nvib-files-container .annex-file-preview');
+    let _nvibAnnexHtml = '';
+    _nvibPreviews.forEach(el => { _nvibAnnexHtml += el.innerHTML; });
+    if (_nvibAnnexHtml.trim()) {
+      sNvibChildren.push(emptyPara());
+      sNvibChildren.push(para("Surveyor Report Annex — continued on following pages:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
+      sNvibChildren.push(...(await htmlToDocxChildren(_nvibAnnexHtml)));
+    }
+
+    sections.push({
+      ...buildSectionProps({ withFooter: true }),
+      children: sNvibChildren,
+    });
+  }
+
   // ══════════════════════════════════════════════════════════════════════════
   //  SECTION 7 – CHANGE ORDERS
   // ══════════════════════════════════════════════════════════════════════════
-  const s3Children = [ sectionAnchor("sec7"), sectionHeading(_n7+". Change Orders"), emptyPara(true) ];
+  const s3Children = [ sectionAnchor("sec8"), sectionHeading(_n8+". Change Orders"), emptyPara(true) ];
   const coRows_dom = document.querySelectorAll('#co-body tr');
 
   if (coRows_dom.length) {
@@ -36418,7 +36574,7 @@ async function generateDOCX() {
   //  SECTION 8 – BUYER'S DECISION MAKING
   // ══════════════════════════════════════════════════════════════════════════
   if (document.getElementById('bdm-cb').checked) {
-    const s7Children = [ sectionAnchor("sec8"), sectionHeading(_n8+". Buyer's Decision Making"), emptyPara(true) ];
+    const s7Children = [ sectionAnchor("sec9"), sectionHeading(_n9+". Buyer's Decision Making"), emptyPara(true) ];
     const bdmRows_dom = document.querySelectorAll('#bdm-body tr');
 
     if (bdmRows_dom.length) {
