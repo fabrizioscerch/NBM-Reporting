@@ -34208,6 +34208,17 @@ function removeAnnex(prefix){
 // ── Multi-file annex upload with Up/Down reordering ─────────────────────────
 const _annexCounters = {};
 
+function _toggleAnnexPreview(cardId) {
+  const preview = document.getElementById(cardId + '-preview');
+  const btn = document.getElementById(cardId + '-toggle');
+  if (!preview || !btn) return;
+  const hidden = preview.style.display === 'none';
+  preview.style.display = hidden ? '' : 'none';
+  btn.textContent = hidden ? 'Hide' : 'Show';
+  btn.style.color = hidden ? '#666' : '#1c3548';
+  btn.style.fontWeight = hidden ? '' : '700';
+}
+
 function _moveAnnexCard(cardId, dir) {
   const card = document.getElementById(cardId);
   if (!card) return;
@@ -34245,6 +34256,8 @@ async function _addSingleAnnexFile(prefix, file) {
       '<button type="button" onclick="_moveAnnexCard(\'' + cardId + '\',-1)" style="' + btnStyle + '" title="Move up">▲</button>' +
       '<button type="button" onclick="_moveAnnexCard(\'' + cardId + '\',1)"  style="' + btnStyle + '" title="Move down">▼</button>' +
       '<span id="' + nameId + '" style="flex:1;font-size:12px;color:#1c3548;font-weight:600;">' + file.name + ' — loading…</span>' +
+      '<button type="button" id="' + cardId + '-toggle" onclick="_toggleAnnexPreview(\'' + cardId + '\')" ' +
+          'style="background:none;border:1px solid #c0c4cc;cursor:pointer;font-size:11px;color:#666;padding:2px 8px;border-radius:4px;">Hide</button>' +
       '<button type="button" onclick="removeAnnexFile(\'' + cardId + '\')" ' +
           'style="background:none;border:none;cursor:pointer;font-size:12px;color:#888;padding:2px 8px;border-radius:4px;">✕ Remove</button>' +
     '</div>' +
