@@ -34238,6 +34238,34 @@ async function addAnnexFile(prefix, e) {
   for (const file of files) { await _addSingleAnnexFile(prefix, file); }
 }
 
+function _restoreAnnexCard(prefix, name, html, hidden) {
+  if (!_annexCounters[prefix]) _annexCounters[prefix] = 0;
+  const idx = ++_annexCounters[prefix];
+  const cardId = prefix + '-file-' + idx;
+  const container = document.getElementById(prefix + '-files-container');
+  if (!container) return;
+  const card = document.createElement('div');
+  card.id = cardId;
+  card.setAttribute('data-annex-card', '1');
+  card.style.cssText = 'margin-top:8px;border:1px solid #d0d2d6;border-radius:8px;overflow:hidden;background:#fff;';
+  const nameId = cardId + '-name';
+  const previewId = cardId + '-preview';
+  const btnStyle = 'background:#d8dde6;border:none;cursor:pointer;font-size:11px;color:#1c3548;padding:2px 7px;border-radius:3px;font-weight:700;line-height:1.4;';
+  card.innerHTML =
+    '<div style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:#eef2f6;border-bottom:1px solid #d0d2d6;">' +
+      '<button type="button" onclick="_moveAnnexCard(\'' + cardId + '\',-1)" style="' + btnStyle + '" title="Move up">▲</button>' +
+      '<button type="button" onclick="_moveAnnexCard(\'' + cardId + '\',1)"  style="' + btnStyle + '" title="Move down">▼</button>' +
+      '<span id="' + nameId + '" style="flex:1;font-size:12px;color:#1c3548;font-weight:600;">' + name + '</span>' +
+      '<button type="button" id="' + cardId + '-toggle" onclick="_toggleAnnexPreview(\'' + cardId + '\')" ' +
+          'style="background:none;border:1px solid #c0c4cc;cursor:pointer;font-size:11px;color:#666;padding:2px 8px;border-radius:4px;">' + (hidden ? 'Show' : 'Hide') + '</button>' +
+      '<button type="button" onclick="removeAnnexFile(\'' + cardId + '\')" ' +
+          'style="background:none;border:none;cursor:pointer;font-size:12px;color:#888;padding:2px 8px;border-radius:4px;">✕ Remove</button>' +
+    '</div>' +
+    '<div id="' + previewId + '" class="annex-file-preview" contenteditable="true" ' +
+        'style="padding:12px;min-height:60px;max-height:500px;overflow-y:auto;font-size:13px;line-height:1.5;' + (hidden ? 'display:none;' : '') + '">' + html + '</div>';
+  container.appendChild(card);
+}
+
 async function _addSingleAnnexFile(prefix, file) {
   if (!_annexCounters[prefix]) _annexCounters[prefix] = 0;
   const idx = ++_annexCounters[prefix];
@@ -34469,9 +34497,7 @@ async function saveDraft() {
     mediaGridCols: null,
     mediaGridRows: null,
     gantt: null,
-    paintAnnex: null,
-    intAnnex: null,
-    logAnnex: null,
+    annexFiles: {},
   };
 
   // Text inputs and textareas
@@ -34559,23 +34585,23 @@ async function saveDraft() {
     })));
   }
 
-  // Annex previews (paint, int, log). The HTML preview already contains
-  // base64-embedded images from PDF rendering or docx extraction.
-  ['paint', 'int', 'log'].forEach(prefix => {
-    const previewEl = document.getElementById(prefix+'-annex-preview');
-    const textEl    = document.getElementById(prefix==='log' ? 'construction-log' : prefix+'-annex-text');
-    const nameEl    = document.getElementById(prefix+'-annex-name');
-    const removeBtn = document.getElementById(prefix+'-annex-remove');
-    const obj = {
-      labelText: nameEl ? nameEl.textContent : '',
-      html: previewEl ? previewEl.innerHTML : '',
-      htmlVisible: previewEl ? (previewEl.style.display !== 'none') : false,
-      text: textEl ? textEl.value : '',
-      textVisible: textEl ? (textEl.style.display !== 'none') : false,
-      removeBtnVisible: removeBtn ? (removeBtn.style.display !== 'none') : false,
-    };
-    const key = prefix==='paint' ? 'paintAnnex' : prefix==='int' ? 'intAnnex' : 'logAnnex';
-    draft[key] = obj;
+  // Annex files (paint, int, log, nvib) — multi-file containers.
+  // Each .annex-file-preview already contains base64-embedded images.
+  draft.annexFiles = {};
+  ['paint', 'int', 'log', 'nvib'].forEach(prefix => {
+    const container = document.getElementById(prefix+'-files-container');
+    if (!container) return;
+    const cards = container.querySelectorAll('[data-annex-card]');
+    if (!cards.length) return;
+    draft.annexFiles[prefix] = Array.from(cards).map(card => {
+      const nameEl    = card.querySelector('[id$="-name"]');
+      const previewEl = card.querySelector('.annex-file-preview');
+      return {
+        name:    nameEl    ? nameEl.textContent    : 'file',
+        html:    previewEl ? previewEl.innerHTML   : '',
+        hidden:  previewEl ? (previewEl.style.display === 'none') : false,
+      };
+    });
   });
 
   const blob = new Blob([JSON.stringify(draft)], { type: 'application/json' });
@@ -34739,29 +34765,25 @@ async function loadDraft(event) {
       previewGantt({ target: { files: ganttFiles } });
     }
 
-    // Restore annexes (paint, int, log)
+    // Restore annex files (paint, int, log, nvib) — multi-file containers
+    if (draft.annexFiles) {
+      for (const prefix of ['paint', 'int', 'log', 'nvib']) {
+        const entries = draft.annexFiles[prefix];
+        if (!entries || !entries.length) continue;
+        const container = document.getElementById(prefix+'-files-container');
+        if (!container) continue;
+        container.innerHTML = '';
+        entries.forEach(entry => _restoreAnnexCard(prefix, entry.name, entry.html, entry.hidden));
+      }
+    }
+    // Legacy single-file annex format (older drafts) — best-effort restore
     ['paint', 'int', 'log'].forEach(prefix => {
       const key = prefix==='paint' ? 'paintAnnex' : prefix==='int' ? 'intAnnex' : 'logAnnex';
       const annex = draft[key];
-      if (!annex) return;
-      const previewEl = document.getElementById(prefix+'-annex-preview');
-      const textEl    = document.getElementById(prefix==='log' ? 'construction-log' : prefix+'-annex-text');
-      const nameEl    = document.getElementById(prefix+'-annex-name');
-      const removeBtn = document.getElementById(prefix+'-annex-remove');
-      const zoneEl    = document.getElementById(prefix+'-annex-zone');
-      if (previewEl) {
-        previewEl.innerHTML   = annex.html || '';
-        previewEl.style.display = annex.htmlVisible ? 'block' : 'none';
-      }
-      if (textEl) {
-        textEl.value = annex.text || '';
-        if (prefix === 'paint' || prefix === 'int') {
-          textEl.style.display = annex.textVisible ? 'block' : 'none';
-        }
-      }
-      if (nameEl && annex.labelText) nameEl.textContent = annex.labelText;
-      if (removeBtn) removeBtn.style.display = annex.removeBtnVisible ? 'inline-block' : 'none';
-      if (zoneEl && (annex.htmlVisible || annex.textVisible)) zoneEl.style.borderColor = '#1c3548';
+      if (!annex || !annex.html) return;
+      const container = document.getElementById(prefix+'-files-container');
+      if (!container || container.children.length) return; // skip if already restored above
+      _restoreAnnexCard(prefix, annex.labelText || 'Restored file', annex.html, false);
     });
 
     pb.textContent = '✓ Draft loaded — ' + (draft.timestamp ? 'saved ' + new Date(draft.timestamp).toLocaleString() : '');
