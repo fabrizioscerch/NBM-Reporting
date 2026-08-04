@@ -33322,6 +33322,12 @@ window.docx = module.exports;
     document.getElementById('login-overlay').style.display='none';
   } else {
     document.addEventListener('DOMContentLoaded', syncLogo);
+  // Set Report Date to current month
+  const _smEl = document.getElementById('sel-month');
+  if (_smEl) {
+    const _n = new Date();
+    _smEl.value = _n.getFullYear() + '-' + String(_n.getMonth()+1).padStart(2,'0');
+  }
   }
 })();
 function doLogin(){
@@ -33362,7 +33368,7 @@ function doLogin(){
       </div>
       <div>
         <label>Report Date</label>
-        <input type="month" id="sel-month" value="2026-06" style="width:100%;box-sizing:border-box;">
+        <input type="month" id="sel-month" style="width:100%;box-sizing:border-box;">
         <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
           <span style="font-size:10px;color:#8a8fa8;font-family:inherit;white-space:nowrap;">If not EOM</span>
           <input type="number" id="sel-day" min="1" max="31" placeholder="Day"
@@ -33559,7 +33565,7 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
         <div class="fl">
           <label>Construction Log Report <span class="opt">(upload .pdf — multiple files allowed)</span></label>
           <div class="gantt-zone" id="log-annex-zone" style="padding:16px;cursor:pointer;" onclick="document.getElementById('log-annex-file').click()">
-            <input type="file" id="log-annex-file" accept=".docx,.pdf" style="display:none;" onchange="addAnnexFile('log',event)">
+            <input type="file" id="log-annex-file" accept=".docx,.pdf" multiple style="display:none;" onchange="addAnnexFile('log',event)">
             <svg width="22" height="22" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             <p>(Click to upload — multiple files allowed)</p>
           </div>
@@ -33593,7 +33599,7 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
         <div class="fl" style="margin-top:8px">
           <label>Surveyor Report Annex <span class="opt">(upload .pdf — imported as page images, formatting preserved, not editable)</span></label>
           <div class="gantt-zone" id="paint-annex-zone" style="padding:16px;cursor:pointer;" onclick="document.getElementById('paint-annex-file').click()">
-            <input type="file" id="paint-annex-file" accept=".docx,.pdf" style="display:none;" onchange="addAnnexFile('paint',event)">
+            <input type="file" id="paint-annex-file" accept=".docx,.pdf" multiple style="display:none;" onchange="addAnnexFile('paint',event)">
             <svg width="22" height="22" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             <p>(Click to upload — multiple files allowed)</p>
           </div>
@@ -33627,7 +33633,7 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
         <div class="fl" style="margin-top:8px">
           <label>Surveyor Report Annex <span class="opt">(upload .pdf — imported as page images, formatting preserved, not editable)</span></label>
           <div class="gantt-zone" id="int-annex-zone" style="padding:16px;cursor:pointer;" onclick="document.getElementById('int-annex-file').click()">
-            <input type="file" id="int-annex-file" accept=".docx,.pdf" style="display:none;" onchange="addAnnexFile('int',event)">
+            <input type="file" id="int-annex-file" accept=".docx,.pdf" multiple style="display:none;" onchange="addAnnexFile('int',event)">
             <svg width="22" height="22" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             <p>(Click to upload — multiple files allowed)</p>
           </div>
@@ -33662,7 +33668,7 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
         <div class="fl" style="margin-top:8px">
           <label>Surveyor Report Annex <span class="opt">(upload .pdf — multiple files allowed)</span></label>
           <div class="gantt-zone" id="nvib-annex-zone" style="padding:16px;cursor:pointer;" onclick="document.getElementById('nvib-annex-file').click()">
-            <input type="file" id="nvib-annex-file" accept=".docx,.pdf" style="display:none;" onchange="addAnnexFile('nvib',event)">
+            <input type="file" id="nvib-annex-file" accept=".docx,.pdf" multiple style="display:none;" onchange="addAnnexFile('nvib',event)">
             <svg width="22" height="22" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             <p>(Click to upload — multiple files allowed)</p>
           </div>
@@ -34241,8 +34247,12 @@ function _initAnnexDrag(container) {
 }
 
 async function addAnnexFile(prefix, e) {
-  const file = e.target.files[0]; if (!file) return;
+  const files = Array.from(e.target.files); if (!files.length) return;
   e.target.value = '';
+  for (const file of files) { await _addSingleAnnexFile(prefix, file); }
+}
+
+async function _addSingleAnnexFile(prefix, file) {
   if (!_annexCounters[prefix]) _annexCounters[prefix] = 0;
   const idx = ++_annexCounters[prefix];
   const cardId = prefix + '-file-' + idx;
