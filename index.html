@@ -33592,14 +33592,12 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
         <div class="fl"><label>Findings &amp; Open Items</label><textarea id="paint-findings" rows="5" placeholder="[STANDARD TEXT — TO BE CUSTOMIZED] Summarize the paint surveyor's key findings and any open items for this month..."></textarea></div>
         <div class="fl" style="margin-top:8px">
           <label>Surveyor Report Annex <span class="opt">(upload .pdf — imported as page images, formatting preserved, not editable)</span></label>
-          <div class="gantt-zone" id="paint-annex-zone" style="padding:16px;">
-            <input type="file" id="paint-annex-file" accept=".docx,.pdf" onchange="loadAnnex(event,'paint')">
+          <div class="gantt-zone" id="paint-annex-zone" style="padding:16px;cursor:pointer;" onclick="document.getElementById('paint-annex-file').click()">
+            <input type="file" id="paint-annex-file" accept=".docx,.pdf" style="display:none;" onchange="addAnnexFile('paint',event)">
             <svg width="22" height="22" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <p id="paint-annex-name">Upload Paint Surveyor Report (.pdf)</p>
+            <p>(Click to upload — multiple files allowed)</p>
           </div>
-          <button type="button" id="paint-annex-remove" onclick="removeAnnex('paint')" style="display:none;margin-top:8px;background:#f5f5f5;border:1px solid #d0d2d6;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;color:#666;font-family:inherit;">✕ Remove file</button>
-          <div id="paint-annex-preview" contenteditable="true" style="margin-top:8px;display:none;padding:12px;border:1px solid #e0e2e6;border-radius:8px;min-height:120px;max-height:400px;overflow-y:auto;background:#fff;font-size:13px;line-height:1.5;"></div>
-          <textarea id="paint-annex-text" rows="6" placeholder="Extracted text will appear here for review before it goes into the document..." style="margin-top:8px;display:none;"></textarea>
+          <div id="paint-files-container"></div>
         </div>
       </div>
     </div>
@@ -33628,14 +33626,12 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
         <div class="fl"><label>Findings &amp; Open Items</label><textarea id="int-findings" rows="5" placeholder="[STANDARD TEXT — TO BE CUSTOMIZED] Summarize the interiors surveyor's key findings and any open items for this month..."></textarea></div>
         <div class="fl" style="margin-top:8px">
           <label>Surveyor Report Annex <span class="opt">(upload .pdf — imported as page images, formatting preserved, not editable)</span></label>
-          <div class="gantt-zone" id="int-annex-zone" style="padding:16px;">
-            <input type="file" id="int-annex-file" accept=".docx,.pdf" onchange="loadAnnex(event,'int')">
+          <div class="gantt-zone" id="int-annex-zone" style="padding:16px;cursor:pointer;" onclick="document.getElementById('int-annex-file').click()">
+            <input type="file" id="int-annex-file" accept=".docx,.pdf" style="display:none;" onchange="addAnnexFile('int',event)">
             <svg width="22" height="22" fill="none" stroke="#bbb" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <p id="int-annex-name">Upload Interiors Surveyor Report (.pdf)</p>
+            <p>(Click to upload — multiple files allowed)</p>
           </div>
-          <button type="button" id="int-annex-remove" onclick="removeAnnex('int')" style="display:none;margin-top:8px;background:#f5f5f5;border:1px solid #d0d2d6;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;color:#666;font-family:inherit;">✕ Remove file</button>
-          <div id="int-annex-preview" contenteditable="true" style="margin-top:8px;display:none;padding:12px;border:1px solid #e0e2e6;border-radius:8px;min-height:120px;max-height:400px;overflow-y:auto;background:#fff;font-size:13px;line-height:1.5;"></div>
-          <textarea id="int-annex-text" rows="6" placeholder="Extracted text will appear here for review before it goes into the document..." style="margin-top:8px;display:none;"></textarea>
+          <div id="int-files-container"></div>
         </div>
       </div>
     </div>
@@ -34203,28 +34199,73 @@ function removeAnnex(prefix){
   if(removeBtn) removeBtn.style.display = 'none';
 }
 
-// ── Multi-file annex upload (Construction Log, N&V Survey) ──────────────────
+// ── Multi-file annex upload with drag-to-reorder ────────────────────────────
 const _annexCounters = {};
+let _dragCard = null;
+
+function _initAnnexDrag(container) {
+  if (container._dragInit) return;
+  container._dragInit = true;
+  container.addEventListener('dragstart', e => {
+    const card = e.target.closest('[data-annex-card]');
+    if (!card) return;
+    _dragCard = card;
+    setTimeout(() => card.style.opacity = '0.4', 0);
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  container.addEventListener('dragend', () => {
+    if (_dragCard) { _dragCard.style.opacity = ''; _dragCard = null; }
+    container.querySelectorAll('[data-annex-card]').forEach(c => c.style.outline = '');
+  });
+  container.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const card = e.target.closest('[data-annex-card]');
+    container.querySelectorAll('[data-annex-card]').forEach(c => c.style.outline = '');
+    if (card && card !== _dragCard) card.style.outline = '2px solid #1c3548';
+  });
+  container.addEventListener('dragleave', e => {
+    if (!container.contains(e.relatedTarget))
+      container.querySelectorAll('[data-annex-card]').forEach(c => c.style.outline = '');
+  });
+  container.addEventListener('drop', e => {
+    e.preventDefault();
+    const target = e.target.closest('[data-annex-card]');
+    container.querySelectorAll('[data-annex-card]').forEach(c => c.style.outline = '');
+    if (!target || !_dragCard || target === _dragCard) return;
+    const cards = Array.from(container.querySelectorAll('[data-annex-card]'));
+    const si = cards.indexOf(_dragCard), ti = cards.indexOf(target);
+    container.insertBefore(_dragCard, si < ti ? target.nextSibling : target);
+    _dragCard.style.opacity = '';
+  });
+}
 
 async function addAnnexFile(prefix, e) {
   const file = e.target.files[0]; if (!file) return;
-  e.target.value = ''; // allow re-uploading same file
+  e.target.value = '';
   if (!_annexCounters[prefix]) _annexCounters[prefix] = 0;
   const idx = ++_annexCounters[prefix];
   const cardId = prefix + '-file-' + idx;
   const container = document.getElementById(prefix + '-files-container');
   if (!container) return;
+  _initAnnexDrag(container);
   const card = document.createElement('div');
   card.id = cardId;
-  card.style.cssText = 'margin-top:8px;border:1px solid #d0d2d6;border-radius:8px;overflow:hidden;background:#fff;';
+  card.setAttribute('data-annex-card', '1');
+  card.setAttribute('draggable', 'true');
+  card.style.cssText = 'margin-top:8px;border:1px solid #d0d2d6;border-radius:8px;overflow:hidden;background:#fff;cursor:default;';
   const nameId = cardId + '-name';
   const previewId = cardId + '-preview';
   card.innerHTML =
-    '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#eef2f6;border-bottom:1px solid #d0d2d6;">' +
-      '<span id="' + nameId + '" style="font-size:12px;color:#1c3548;font-weight:600;">' + file.name + ' — loading…</span>' +
-      '<button type="button" onclick="removeAnnexFile(\'' + cardId + '\')" style="background:none;border:none;cursor:pointer;font-size:12px;color:#888;padding:2px 8px;border-radius:4px;">✕ Remove</button>' +
+    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#eef2f6;border-bottom:1px solid #d0d2d6;cursor:grab;" ' +
+        'title="Drag to reorder">' +
+      '<span style="font-size:16px;color:#aaa;line-height:1;user-select:none;">⠿</span>' +
+      '<span id="' + nameId + '" style="flex:1;font-size:12px;color:#1c3548;font-weight:600;">' + file.name + ' — loading…</span>' +
+      '<button type="button" onclick="removeAnnexFile(\'' + cardId + '\')" ' +
+          'style="background:none;border:none;cursor:pointer;font-size:12px;color:#888;padding:2px 8px;border-radius:4px;">✕ Remove</button>' +
     '</div>' +
-    '<div id="' + previewId + '" class="annex-file-preview" contenteditable="true" style="padding:12px;min-height:60px;max-height:500px;overflow-y:auto;font-size:13px;line-height:1.5;"></div>';
+    '<div id="' + previewId + '" class="annex-file-preview" contenteditable="true" ' +
+        'style="padding:12px;min-height:60px;max-height:500px;overflow-y:auto;font-size:13px;line-height:1.5;"></div>';
   container.appendChild(card);
   const nameEl = document.getElementById(nameId);
   const previewEl = document.getElementById(previewId);
@@ -36300,17 +36341,13 @@ async function generateDOCX() {
       });
     }
 
-    const paintPreviewEl = document.getElementById('paint-annex-preview');
-    const paintAnnexHtml = (paintPreviewEl && paintPreviewEl.style.display !== 'none') ? paintPreviewEl.innerHTML.trim() : '';
-    const paintAnnex = document.getElementById('paint-annex-text')?.value||'';
-    if (paintAnnexHtml) {
+    const _paintPreviews = document.querySelectorAll('#paint-files-container .annex-file-preview');
+    let _paintAnnexHtml = '';
+    _paintPreviews.forEach(el => { _paintAnnexHtml += el.innerHTML; });
+    if (_paintAnnexHtml.trim()) {
       s4Children.push(emptyPara());
       s4Children.push(para("Surveyor Report Annex — continued on following pages:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
-      s4Children.push(...(await htmlToDocxChildren(paintAnnexHtml)));
-    } else if (paintAnnex) {
-      s4Children.push(emptyPara());
-      s4Children.push(para("Surveyor Report Annex — continued on following pages:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
-      pushParaLines(s4Children, paintAnnex, { size:24, spacing:{before:0,after:80} });
+      s4Children.push(...(await htmlToDocxChildren(_paintAnnexHtml)));
     }
 
     sections.push({
@@ -36351,17 +36388,13 @@ async function generateDOCX() {
       });
     }
 
-    const intPreviewEl = document.getElementById('int-annex-preview');
-    const intAnnexHtml = (intPreviewEl && intPreviewEl.style.display !== 'none') ? intPreviewEl.innerHTML.trim() : '';
-    const intAnnex = document.getElementById('int-annex-text')?.value||'';
-    if (intAnnexHtml) {
+    const _intPreviews = document.querySelectorAll('#int-files-container .annex-file-preview');
+    let _intAnnexHtml = '';
+    _intPreviews.forEach(el => { _intAnnexHtml += el.innerHTML; });
+    if (_intAnnexHtml.trim()) {
       s5Children.push(emptyPara());
       s5Children.push(para("Surveyor Report Annex — continued on following pages:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
-      s5Children.push(...(await htmlToDocxChildren(intAnnexHtml)));
-    } else if (intAnnex) {
-      s5Children.push(emptyPara());
-      s5Children.push(para("Surveyor Report Annex — continued on following pages:", { bold:true, color:NAVY, size:24, spacing:{before:80,after:60} }));
-      pushParaLines(s5Children, intAnnex, { size:24, spacing:{before:0,after:80} });
+      s5Children.push(...(await htmlToDocxChildren(_intAnnexHtml)));
     }
 
     sections.push({
