@@ -35294,7 +35294,10 @@ async function generateDOCX() {
   }
 
   function namedRow(label, value) {
-    // A two-cell row: navy label | value
+    // A two-cell row: navy label | value (value supports multi-line via \n)
+    const valStr = String(value || '—');
+    const valParas = [];
+    pushParaLines(valParas, valStr, { size: 24 });
     return new TableRow({
       children: [
         new TableCell({
@@ -35308,7 +35311,7 @@ async function generateDOCX() {
           width: { size: 6500, type: WidthType.DXA },
           borders: thinBorders,
           margins: { top: 60, bottom: 60, left: 120, right: 120 },
-          children: [ para(value||'—', { size:24 }) ],
+          children: valParas,
         }),
       ],
     });
