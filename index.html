@@ -33393,7 +33393,7 @@ function doLogin(){
   <!-- COVER -->
   <div class="card">
     <div class="card-header" onclick="toggleCard('cover')">
-      <div class="card-title"><div class="sec-num">C</div><span class="sec-label">Cover &amp; Letter</span></div>
+      <div class="card-title"><div class="sec-num">C</div><span class="sec-label">Cover Letter</span></div>
       <span class="chevron" id="ch-cover">&#8964;</span>
     </div>
     <div class="card-body" id="b-cover">
@@ -33401,7 +33401,7 @@ function doLogin(){
         <div class="fl"><label>Vessel Name</label><input type="text" id="vessel-name" placeholder="e.g. M/Y Lumina"></div>
         <div class="fl"><label>Builder &amp; Model</label><input type="text" id="vessel-builder" placeholder="e.g. Benetti Class 44m"></div>
       </div>
-      <div class="fl"><label>Owner / Recipient Name <span style="font-weight:400;color:#aaa;">[name(s) only]</span></label><input type="text" id="owner-name" placeholder="e.g. Mr. Smith"></div>
+      <div class="fl"><label>Owner / Recipient Name <span style="font-weight:400;color:#aaa;">[name(s) only]</span></label><input type="text" id="owner-name" placeholder="e.g. Mr. Smith" oninput="var v=this.value,lv=v.trimStart().toLowerCase();if(lv.startsWith('dear')){this.value=v.trimStart().slice(4).trimStart();this.style.outline='2px solid #e05252';setTimeout(()=>this.style.outline='',1200);}"></div>
       <div class="g3">
         <div class="fl"><label>New Build Manager Name</label><input type="text" id="nbm-name" placeholder="Auto-filled on project select"></div>
         <div class="fl"><label>New Build Manager Email</label><input type="text" id="nbm-email" placeholder="e.g. mb@nauticall.com"></div>
@@ -33438,6 +33438,7 @@ function doLogin(){
             <span style="background:#1c3548;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;">Change Orders</span>
             <span style="background:#1c3548;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;">Buyer's Decision Making</span>
             <span style="background:#1c3548;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;">Progress Media</span>
+            <span style="background:#1c3548;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;">Noise &amp; Vibration Survey</span>
           </div>
         </div>
       </div>
