@@ -36160,15 +36160,17 @@ async function generateDOCX() {
             } else {
               cellChildren.push(emptyPara());
             }
-            // Navy caption paragraph inside same cell — stays with image
+            // Navy caption paragraph — only added if there is caption text
             const capEl = slotKey !== undefined ? document.getElementById('cap-'+slotKey) : null;
             const capText = capEl ? capEl.value.trim() : '';
-            cellChildren.push(new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing:{before:60,after:60},
-              shading:{ fill:'1c3548', type:ShadingType.CLEAR, color:'1c3548' },
-              children:[new TextRun({ text:capText||'', color:'FFFFFF', size:16, font:'Calibri' })],
-            }));
+            if (capText) {
+              cellChildren.push(new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing:{before:60,after:60},
+                shading:{ fill:'1c3548', type:ShadingType.CLEAR, color:'1c3548' },
+                children:[new TextRun({ text:capText, color:'FFFFFF', size:16, font:'Calibri' })],
+              }));
+            }
           }
 
           rowCells.push(new TableCell({
