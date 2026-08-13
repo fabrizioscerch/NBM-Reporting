@@ -34174,9 +34174,10 @@ async function loadAnnex(e, prefix){
           if(nameEl) nameEl.textContent = '✓ '+file.name+' — rendering '+pdfDoc.numPages+' page(s)…';
           for(let pi=1; pi<=pdfDoc.numPages; pi++){
             const page = await pdfDoc.getPage(pi);
-            // Scale 1.5 ≈ 144 dpi — sufficient for DOCX embedding (images
-            // capped at 640 px wide anyway). JPEG 85% keeps files small.
-            const viewport = page.getViewport({ scale: 1.5 });
+            const _aqSel1 = document.getElementById('annex-quality');
+            const _aqScale1 = _aqSel1 ? parseFloat(_aqSel1.value) || 2.5 : 2.5;
+            const _aqJpeg1  = _aqScale1 >= 4.5 ? 0.95 : _aqScale1 >= 3.0 ? 0.92 : 0.88;
+            const viewport = page.getViewport({ scale: _aqScale1 });
             const canvas = document.createElement('canvas');
             canvas.width = viewport.width;
             canvas.height = viewport.height;
@@ -34184,15 +34185,14 @@ async function loadAnnex(e, prefix){
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-            // Skip blank pages: sample pixel brightness across the canvas
             const sampleData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
             let nonWhitePixels = 0;
-            for (let si = 0; si < sampleData.length; si += 16) { // sample every 4th pixel
+            for (let si = 0; si < sampleData.length; si += 16) {
               if (sampleData[si] < 245 || sampleData[si+1] < 245 || sampleData[si+2] < 245) nonWhitePixels++;
             }
             const totalSampled = sampleData.length / 16;
-            if (nonWhitePixels / totalSampled < 0.005) continue; // <0.5% non-white → blank page, skip
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            if (nonWhitePixels / totalSampled < 0.005) continue;
+            const dataUrl = canvas.toDataURL('image/jpeg', _aqJpeg1);
             htmlParts.push('<p data-pdf-page="'+pi+'"><img src="'+dataUrl+'" alt="page '+pi+'" style="max-width:100%;display:block;margin:0 auto 8px auto;" /></p>');
           }
           extractedHtml = htmlParts.join('\n');
@@ -34417,8 +34417,10 @@ async function previewGantt(e) {
           const pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
           for (let pi = 1; pi <= pdfDoc.numPages; pi++) {
             const page = await pdfDoc.getPage(pi);
-            // Scale 1.5 ≈ 144 dpi — sufficient for DOCX; JPEG 85% keeps file small
-            const viewport = page.getViewport({ scale: 1.5 });
+            const _aqSelG = document.getElementById('annex-quality');
+            const _aqScaleG = _aqSelG ? parseFloat(_aqSelG.value) || 2.5 : 2.5;
+            const _aqJpegG  = _aqScaleG >= 4.5 ? 0.95 : _aqScaleG >= 3.0 ? 0.92 : 0.88;
+            const viewport = page.getViewport({ scale: _aqScaleG });
             const canvas = document.createElement('canvas');
             canvas.width = viewport.width;
             canvas.height = viewport.height;
@@ -34426,7 +34428,7 @@ async function previewGantt(e) {
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             await page.render({ canvasContext: ctx, viewport }).promise;
-            const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.85));
+            const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', _aqJpegG));
             blob._ganttName = f.name + (pdfDoc.numPages > 1 ? ' – p' + pi : '');
             expandedBlobs.push(blob);
           }
