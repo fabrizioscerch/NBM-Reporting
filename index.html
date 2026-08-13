@@ -33532,7 +33532,7 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
       <div class="g3">
         <div class="fl"><label>Next Milestone</label><input type="text" id="next-milestone" placeholder="e.g. Main engine installation"></div>
         <div class="fl"><label>Expected Date</label><input type="date" id="next-milestone-date"></div>
-        <div class="fl"><label>Milestone Amount (€)</label><input type="text" id="milestone-amt" placeholder="e.g. 1,200,000" onkeydown="if(event.key==='.'||event.key===',')event.preventDefault()" oninput="numFmtInput(this)"></div>
+        <div class="fl"><label>Milestone Amount (€)</label><input type="text" id="milestone-amt" placeholder="e.g. 1,200,000" onkeydown="if(event.key===',')event.preventDefault()" oninput="numFmtDecimalInput(this)"></div>
       </div>
     </div>
   </div>
@@ -33841,6 +33841,15 @@ function numFmtInput(el) {
   // Strip everything except digits, then re-insert thousand commas
   const digits = el.value.replace(/[^0-9]/g, '');
   el.value = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+function numFmtDecimalInput(el) {
+  // Allow digits + one decimal point; format integer part with thousand commas
+  const raw = el.value.replace(/[^0-9.]/g, '');
+  const dotIdx = raw.indexOf('.');
+  const intPart = dotIdx >= 0 ? raw.slice(0, dotIdx) : raw;
+  const decPart = dotIdx >= 0 ? raw.slice(dotIdx) : '';
+  const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + decPart;
+  if (el.value !== formatted) el.value = formatted;
 }
 function updateCurrencySymbol(){
   // Update labels on milestone amount placeholder
