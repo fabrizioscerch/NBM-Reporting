@@ -33581,6 +33581,17 @@ NauticALL will need to reattend on [date] for [the witnessing of milestone].</te
       <div class="applicable-row"><input type="checkbox" id="log-cb" onchange="toggleAppl('log-fields',this)"><label for="log-cb">This section applies this month</label></div>
       <div class="fields-wrap disabled" id="log-fields">
         <div class="fl">
+          <!-- Global PDF annex quality selector (applies to all annex uploads) -->
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 12px;background:#eef4f9;border-radius:6px;border:1px solid #c8dae8;">
+            <span style="font-size:12px;color:#1c3548;font-weight:600;white-space:nowrap;">📄 PDF render quality</span>
+            <select id="annex-quality" style="font-size:12px;font-family:inherit;padding:4px 8px;border:1px solid #c8dae8;border-radius:5px;background:#fff;color:#1c3548;cursor:pointer;">
+              <option value="1.5">Draft (fastest)</option>
+              <option value="2.5" selected>Normal</option>
+              <option value="3.5">High</option>
+              <option value="5.0">Print (slowest)</option>
+            </select>
+            <span style="font-size:11px;color:#7a92a5;">Applies to all PDF uploads in this session. Re-upload files after changing.</span>
+          </div>
           <label>Construction Log Report <span class="opt">(upload .pdf — multiple files allowed)</span></label>
           <div class="gantt-zone" id="log-annex-zone" style="padding:16px;cursor:pointer;" onclick="document.getElementById('log-annex-file').click()">
             <input type="file" id="log-annex-file" accept=".docx,.pdf" multiple style="display:none;" onchange="addAnnexFile('log',event)">
@@ -34349,7 +34360,10 @@ async function _addSingleAnnexFile(prefix, file) {
       const parts = [];
       for (let pi = 1; pi <= pdfDoc.numPages; pi++) {
         const page = await pdfDoc.getPage(pi);
-        const vp = page.getViewport({ scale: 1.5 });
+        const _aqSel = document.getElementById('annex-quality');
+        const _aqScale = _aqSel ? parseFloat(_aqSel.value) || 2.5 : 2.5;
+        const _aqJpeg  = _aqScale >= 4.5 ? 0.95 : _aqScale >= 3.0 ? 0.92 : 0.88;
+        const vp = page.getViewport({ scale: _aqScale });
         const cvs = document.createElement('canvas');
         cvs.width = vp.width; cvs.height = vp.height;
         const ctx = cvs.getContext('2d');
@@ -34359,7 +34373,7 @@ async function _addSingleAnnexFile(prefix, file) {
         let nw = 0;
         for (let si = 0; si < sd.length; si += 16) { if (sd[si] < 245 || sd[si+1] < 245 || sd[si+2] < 245) nw++; }
         if (nw / (sd.length / 16) < 0.005) continue;
-        parts.push('<p data-pdf-page="' + pi + '"><img src="' + cvs.toDataURL('image/jpeg', 0.85) + '" alt="p' + pi + '" style="max-width:100%;display:block;margin:0 auto 8px;" /></p>');
+        parts.push('<p data-pdf-page="' + pi + '"><img src="' + cvs.toDataURL('image/jpeg', _aqJpeg) + '" alt="p' + pi + '" style="max-width:100%;display:block;margin:0 auto 8px;" /></p>');
       }
       previewEl.innerHTML = parts.join('\n');
       nameEl.textContent = '✓ ' + file.name + '  (' + pdfDoc.numPages + ' page(s))';
