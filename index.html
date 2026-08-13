@@ -36147,40 +36147,70 @@ async function generateDOCX() {
             }));
           }
 
-          const cellChildren = [];
+          // Build photo cell: nested inner table so the blue border hugs the image
+          // rather than stretching to match the row height of a taller neighbour.
+          const capEl  = slotKey !== undefined ? document.getElementById('cap-'+slotKey) : null;
+          const capText = capEl ? capEl.value.trim() : '';
+
           if (hasPh) {
             const result = await resizePhoto(mf, mf.rotation||0);
-            if (result && result.bytes.length > 0) {
-              cellChildren.push(new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing:{before:0,after:0},
-                children:[new ImageRun({ type: result.type, data: result.bytes,
-                  transformation:{ width: result.dw, height: result.dh } })],
-              }));
-            } else {
-              cellChildren.push(emptyPara());
-            }
-            // Navy caption paragraph — only added if there is caption text
-            const capEl = slotKey !== undefined ? document.getElementById('cap-'+slotKey) : null;
-            const capText = capEl ? capEl.value.trim() : '';
-            if (capText) {
-              cellChildren.push(new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing:{before:60,after:60},
-                shading:{ fill:'1c3548', type:ShadingType.CLEAR, color:'1c3548' },
-                children:[new TextRun({ text:capText, color:'FFFFFF', size:16, font:'Calibri' })],
-              }));
-            }
-          }
+            const imgPara = (result && result.bytes.length > 0)
+              ? new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  spacing:{before:0,after:0},
+                  children:[new ImageRun({ type: result.type, data: result.bytes,
+                    transformation:{ width: result.dw, height: result.dh } })],
+                })
+              : emptyPara();
 
-          rowCells.push(new TableCell({
-            width: { size: photoCellW, type: WidthType.DXA },
-            borders: hasPh ? { top:blueBorder,left:blueBorder,right:blueBorder,bottom:blueBorder } : noBorders,
-            margins:{top:0,bottom:0,left:0,right:0},
-            // Empty cells get explicit no-borders shading to suppress any line artifacts
-            shading: hasPh ? undefined : { fill: 'D9D9D9', type: ShadingType.CLEAR, color: 'D9D9D9' },
-            children: hasPh ? cellChildren : [new Paragraph({ spacing:{ before:0, after:0 } })],
-          }));
+            // Inner table rows: image row + optional caption row
+            const innerRows = [new TableRow({ children: [new TableCell({
+              width:{ size: photoCellW, type: WidthType.DXA },
+              borders: noBorders,
+              margins:{top:0,bottom:0,left:0,right:0},
+              children:[imgPara],
+            })] })];
+
+            if (capText) {
+              innerRows.push(new TableRow({ children: [new TableCell({
+                width:{ size: photoCellW, type: WidthType.DXA },
+                borders: noBorders,
+                margins:{top:0,bottom:0,left:0,right:0},
+                shading:{ fill:'1c3548', type:ShadingType.CLEAR, color:'1c3548' },
+                children:[new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  spacing:{before:60,after:60},
+                  children:[new TextRun({ text:capText, color:'FFFFFF', size:16, font:'Calibri' })],
+                })],
+              })] }));
+            }
+
+            // Inner bordered table — its height = image (+ caption) height only
+            const innerTable = new Table({
+              width:{ size: photoCellW, type: WidthType.DXA },
+              columnWidths:[photoCellW],
+              borders:{ top:blueBorder, left:blueBorder, right:blueBorder, bottom:blueBorder,
+                        insideHorizontal:noBorders.insideHorizontal, insideVertical:noBorders.insideVertical },
+              rows: innerRows,
+            });
+
+            // Outer cell: no border, top-aligned, contains the inner table
+            rowCells.push(new TableCell({
+              width:{ size: photoCellW, type: WidthType.DXA },
+              borders: noBorders,
+              verticalAlign: VerticalAlign.TOP,
+              margins:{top:0,bottom:0,left:0,right:0},
+              children:[innerTable],
+            }));
+          } else {
+            rowCells.push(new TableCell({
+              width:{ size: photoCellW, type: WidthType.DXA },
+              borders: noBorders,
+              margins:{top:0,bottom:0,left:0,right:0},
+              shading:{ fill:'D9D9D9', type:ShadingType.CLEAR, color:'D9D9D9' },
+              children:[new Paragraph({ spacing:{ before:0, after:0 } })],
+            }));
+          }
         }
 
         photoRowTables.push(new Table({
