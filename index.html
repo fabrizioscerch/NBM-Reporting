@@ -33915,21 +33915,23 @@ function rebuildMedia(){
     if(mediaFiles[i]){
       const _rot = mediaFiles[i].rotation||0;
 
-      // Blue border wrapper
+      // Blue border wrapper — height follows the image naturally
       const frame = document.createElement('div');
-      frame.style.cssText = 'position:relative;border:3px solid #5B7E96;border-bottom:none;border-radius:4px 4px 0 0;overflow:hidden;aspect-ratio:3/4;';
+      frame.style.cssText = 'position:relative;border:3px solid #5B7E96;border-bottom:none;border-radius:4px 4px 0 0;overflow:hidden;';
 
       const img = document.createElement('img');
-      img.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;transform:rotate('+_rot+'deg);';
-      img.addEventListener('load',()=>{
-        if(img.naturalWidth && img.naturalHeight){
-          const r = mediaFiles[i].rotation||0;
-          const ratio = (r===90||r===270)
-            ? img.naturalHeight/img.naturalWidth
-            : img.naturalWidth/img.naturalHeight;
-          frame.style.aspectRatio = ratio.toFixed(3);
-        }
-      });
+      // For rotated 90/270 we still need the aspect-ratio trick; for 0/180 let image size naturally
+      if(_rot===90||_rot===270){
+        img.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;transform:rotate('+_rot+'deg);';
+        img.addEventListener('load',()=>{
+          if(img.naturalWidth && img.naturalHeight){
+            frame.style.aspectRatio = (img.naturalHeight/img.naturalWidth).toFixed(3);
+          }
+        });
+        frame.style.aspectRatio = '3/4'; // placeholder until load
+      } else {
+        img.style.cssText = 'display:block;width:100%;height:auto;transform:rotate('+_rot+'deg);';
+      }
       img.src = mediaFiles[i].url;
       frame.appendChild(img);
 
@@ -33970,16 +33972,26 @@ function rebuildMedia(){
 
       slot.appendChild(frame);
 
-      // Navy caption band (always visible, editable)
+      // Navy caption band — visible only when there is text (or on hover/focus)
       const band = document.createElement('div');
-      band.style.cssText = 'background:#1c3548;border:3px solid #5B7E96;border-top:none;border-radius:0 0 4px 4px;padding:4px 8px;';
+      const _capVal = (mediaFiles[i]&&mediaFiles[i].caption)||'';
+      band.style.cssText = 'background:#1c3548;border:3px solid #5B7E96;border-top:none;border-radius:0 0 4px 4px;padding:4px 8px;transition:opacity 0.15s;'
+        + (_capVal ? '' : 'opacity:0;pointer-events:none;');
       const capInp = document.createElement('input');
       capInp.type = 'text';
       capInp.placeholder = 'Caption…';
       capInp.id = 'cap-'+i;
       capInp.style.cssText = 'width:100%;background:transparent;border:none;outline:none;color:#fff;font-size:11px;text-align:center;font-family:Calibri,sans-serif;';
-      capInp.value = (mediaFiles[i]&&mediaFiles[i].caption)||'';
-      capInp.addEventListener('change',e=>{ if(mediaFiles[i]) mediaFiles[i].caption=e.target.value; });
+      capInp.value = _capVal;
+      const _showBand = () => { band.style.opacity='1'; band.style.pointerEvents=''; };
+      const _hideBand = () => { if(!capInp.value.trim()){ band.style.opacity='0'; band.style.pointerEvents='none'; } };
+      capInp.addEventListener('focus', _showBand);
+      capInp.addEventListener('blur',  _hideBand);
+      capInp.addEventListener('input', () => { if(capInp.value.trim()) _showBand(); });
+      capInp.addEventListener('change',e=>{ if(mediaFiles[i]) mediaFiles[i].caption=e.target.value; _hideBand(); });
+      // Show band on slot hover so user can click to add caption
+      slot.addEventListener('mouseenter', _showBand);
+      slot.addEventListener('mouseleave', () => { if(document.activeElement!==capInp) _hideBand(); });
       band.appendChild(capInp);
       slot.appendChild(band);
 
